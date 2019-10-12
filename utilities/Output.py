@@ -11,12 +11,8 @@ CSV_FILENAME = "Submission.csv"
 def create_output_csv(output_dict):
     content = "ID,Label\n"
     for image_id in output_dict:
-        content += create_output_line(image_id, HemorrhageTypes.EP.value, output_dict[image_id][0])
-        content += create_output_line(image_id, HemorrhageTypes.IN_PA.value, output_dict[image_id][1])
-        content += create_output_line(image_id, HemorrhageTypes.IN_VE.value, output_dict[image_id][2])
-        content += create_output_line(image_id, HemorrhageTypes.SUB_AR.value, output_dict[image_id][3])
-        content += create_output_line(image_id, HemorrhageTypes.SUB_DU.value, output_dict[image_id][4])
-        content += create_output_line(image_id, HemorrhageTypes.ANY.value, output_dict[image_id][5])
+        for num, hemorrhageType in enumerate(HemorrhageTypes, start=0):
+            content += create_output_line(image_id, hemorrhageType.value, output_dict[image_id][num])
     with open(CSV_FILENAME, "w") as f:
         f.write(content)
 
@@ -31,3 +27,4 @@ if __name__ == '__main__':
     for index in range(100):
         output_dict["image" + str(index)] = (0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
     create_output_csv(output_dict)
+
