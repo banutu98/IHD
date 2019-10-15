@@ -2,6 +2,12 @@ import os
 import pandas as pd
 
 
+def print_error(message):
+    c_red = '\033[91m'
+    c_end = '\033[0m'
+    print(c_red + message + c_end)
+
+
 def get_csv_train(data_prefix='../data'):
     train_df = pd.read_csv(os.path.join(data_prefix, 'stage_1_train.csv'))
     train_df[['ID', 'subtype']] = train_df['ID'].str.rsplit('_', 1,
