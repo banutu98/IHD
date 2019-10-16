@@ -2,6 +2,8 @@ import os
 import pandas as pd
 import glob
 import pydicom
+import numpy as np
+
 
 def print_error(message):
     c_red = '\033[91m'
@@ -21,8 +23,16 @@ def get_csv_train(data_prefix='../data'):
 
 def extract_csv_partition():
     df = get_csv_train()
+    meta_data_train = combine_labels_metadata('../data/train')
     negative, positive = df.loc[df['any'] == 0], df.loc[df['any'] == 1]
-    negative = negative.sample(n=len(positive.index))
+    negative_study_uids = list(meta_data_train.query("any == 0")['StudyInstanceUID'])
+    indices = np.arange(min(len(negative_study_uids), len(positive.index)))
+    np.random.shuffle(indices)
+    negative_study_uids = np.array(negative_study_uids)[indices]
+    selected_negative_studies = meta_data_train.loc[meta_data_train['StudyInstanceUID'].isin(negative_study_uids)]
+    selected_negative_studies = selected_negative_studies.drop(set(selected_negative_studies.columns).intersection(set(negative.columns)), axis=1)
+    negative = negative.merge(selected_negative_studies, how='left', on='id').dropna()
+    negative = negative.drop(selected_negative_studies.columns, axis=1)
     return pd.concat([positive, negative])
 
 
@@ -32,12 +42,12 @@ def extract_metadata(data_prefix='../data'):
     get_id = lambda p: os.path.splitext(os.path.basename(p))[0]
     ids = map(get_id, filenames)
     dcms = map(pydicom.dcmread, filenames)
-    columns = ['BitsAllocated','BitsStored','Columns','HighBit',
-               'Modality','PatientID','PhotometricInterpretation',
-               'PixelRepresentation','RescaleIntercept','RescaleSlope',
-               'Rows','SOPInstanceUID','SamplesPerPixel','SeriesInstanceUID',
-               'StudyID','StudyInstanceUID','ImagePositionPatient',
-               'ImageOrientationPatient','PixelSpacing']
+    columns = ['BitsAllocated', 'BitsStored', 'Columns', 'HighBit',
+               'Modality', 'PatientID', 'PhotometricInterpretation',
+               'PixelRepresentation', 'RescaleIntercept', 'RescaleSlope',
+               'Rows', 'SOPInstanceUID', 'SamplesPerPixel', 'SeriesInstanceUID',
+               'StudyID', 'StudyInstanceUID', 'ImagePositionPatient',
+               'ImageOrientationPatient', 'PixelSpacing']
     meta_dict = {col: [] for col in columns}
     for img in dcms:
         for col in columns:
@@ -58,15 +68,17 @@ def extract_metadata(data_prefix='../data'):
     meta_df = meta_df.drop(['ImagePositionPatient', 'ImageOrientationPatient', 'PixelSpacing'], axis=1)
     return meta_df
 
+
 def combine_labels_metadata(data_prefix='../data'):
     meta_df = extract_metadata(data_prefix)
     df = get_csv_train(data_prefix)
     df = df.merge(meta_df, how='left', on='id').dropna()
     df.sort_values(by='ImagePositionPatient3', inplace=True, ascending=False)
-    #df.to_csv(os.path.join(prefix_data, 'train_meta.csv'))
+    # df.to_csv(os.path.join(prefix_data, 'train_meta.csv'))
     return df
+
 
 if __name__ == '__main__':
     partition = extract_csv_partition()
-    print(partition.index.values)
-    print(combine_labels_metadata())
+    # print(partition.index.values)
+    # print(combine_labels_metadata())

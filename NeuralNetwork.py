@@ -12,9 +12,10 @@ from utilities.utils import print_error
 
 class MyModel:
 
-    def __init__(self, network, input_shape, pooling_method='max', classes=2):
+    def __init__(self, network, input_shape, pooling_method='max', classes=2, use_softmax=True):
         self.base_model = self.get_base_model(network, input_shape, pooling_method)
         self.classes = classes
+        self.use_softmax = use_softmax
 
     @staticmethod
     def get_base_model(network, input_shape, pooling_method):
@@ -57,7 +58,8 @@ class MyModel:
         model.add(BatchNormalization())
         model.add(LeakyReLU(alpha=0.1))
         model.add(Dropout(0.3))
-        model.add(Dense(2, activation='softmax'))
+        if self.use_softmax:
+            model.add(Dense(2, activation='softmax'))
         return model
 
     def build_multi_class_model(self):
@@ -67,5 +69,6 @@ class MyModel:
         model.add(BatchNormalization())
         model.add(LeakyReLU(alpha=0.1))
         model.add(Dropout(0.3))
-        model.add(Dense(5, activation='softmax'))
+        if self.use_softmax:
+            model.add(Dense(5, activation='softmax'))
         return model
