@@ -1,6 +1,6 @@
 from keras.applications import NASNetLarge, InceptionResNetV2, Xception, DenseNet201, ResNet50
-from keras.layers import Dense, Input, Dropout, Conv2D, Flatten, AveragePooling2D, BatchNormalization, LeakyReLU
-from keras.models import Model
+from keras.layers import Dense, Input, Dropout, Conv2D, Flatten, AveragePooling2D, BatchNormalization, LeakyReLU, GlobalAveragePooling2D
+from keras.models import Model, Sequential
 from keras.models import load_model
 from keras.optimizers import SGD, Adamax, Nadam
 from keras.preprocessing.image import ImageDataGenerator
@@ -51,7 +51,21 @@ class MyModel:
         return self.build_binary_model() if self.classes == 2 else self.build_multi_class_model()
 
     def build_binary_model(self):
-        return self.base_model
+        model = Sequential()
+        model.add(self.base_model)
+        model.add(Dense(96))
+        model.add(BatchNormalization())
+        model.add(LeakyReLU(alpha=0.1))
+        model.add(Dropout(0.3))
+        model.add(Dense(2, activation='softmax'))
+        return model
 
     def build_multi_class_model(self):
-        return self.base_model
+        model = Sequential()
+        model.add(self.base_model)
+        model.add(Dense(96))
+        model.add(BatchNormalization())
+        model.add(LeakyReLU(alpha=0.1))
+        model.add(Dropout(0.3))
+        model.add(Dense(5, activation='softmax'))
+        return model
