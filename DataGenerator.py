@@ -1,6 +1,5 @@
-import pydicom
-import numpy as np
 from keras.utils import Sequence
+from utilities.Hounsfield import *
 
 
 class DataGenerator(Sequence):
@@ -30,19 +29,15 @@ class DataGenerator(Sequence):
         if self.shuffle:
             np.random.shuffle(self.indices)
 
-    @staticmethod
-    def _read(path):
-        return pydicom.dcmread(path).pixel_array
-
     def __data_generation(self, list_ids_temp):
         x = np.empty((self.batch_size, *self.img_size))
         if self.labels is not None:  # training phase
             y = np.empty((self.batch_size, 6), dtype=np.float32)
             for i, ID in enumerate(list_ids_temp):
-                x[i, ] = self._read(self.img_dir + ID + ".dcm")
+                x[i, ] = apply_hounsfield_transformation(self.img_dir + ID + ".dcm")
                 y[i, ] = self.labels.loc[ID].values
             return x, y
         else:  # test phase
             for i, ID in enumerate(list_ids_temp):
-                x[i, ] = self._read(self.img_dir + ID + ".dcm")
+                x[i, ] = apply_hounsfield_transformation(self.img_dir + ID + ".dcm")
             return x
