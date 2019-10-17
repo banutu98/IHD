@@ -1,4 +1,5 @@
 from utilities.HemorrhageTypes import HemorrhageTypes
+import time
 
 CSV_FILENAME = "Submission.csv"
 
@@ -21,10 +22,12 @@ def create_output_line(image_id, hemorrhage_type, probability):
     return "ID_" + image_id + "_" + hemorrhage_type + "," + str(probability) + "\n"
 
 
-# code for testing
+
+# code for testing -> time for creating csv approx 10 seconds
 if __name__ == '__main__':
+    start = time.time()
     output_dict = dict()
-    for index in range(100):
+    for index in range(78545):
         output_dict["image" + str(index)] = (0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
     create_output_csv(output_dict)
-
+    print(time.time() - start)
