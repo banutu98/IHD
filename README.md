@@ -1,7 +1,7 @@
 # IHD
 Identify acute intracranial hemorrhage and its subtypes
 
-**Coordinator**: *Mihaela Breban*
+**Coordinator**: *Mihaela Breaban*
 
 **Team Members**:
 - *Claudiu Ghiga (claudiu.ghiga@info.uaic.ro)* 
