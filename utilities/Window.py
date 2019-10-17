@@ -8,22 +8,17 @@ import os
 # Soft tissue window: W:350–400 L:20–60
 # Bone window: W:2800 L:600
 # Grey-white differentiation window: W:8 L:32 or W:40 L:40
-BRAIN_MATTER_WINDOW_W = 80
-BRAIN_MATTER_WINDOW_L = 40
-SUBDURAL_WINDOW_W = 200
-SUBDURAL_WINDOW_L = 80
-SOFT_TISSUE_WINDOW_W = 380
-SOFT_TISSUE_WINDOW_L = 40
-BONE_WINDOW_W = 2800
-BONE_WINDOW_L = 600
-GRAY_WHITE_DIFFERENTIATION_WINDOW_W = 40
-GRAY_WHITE_DIFFERENTIATION_WINDOW_L = 40
+BRAIN_MATTER_WINDOW = (40, 80)
+SUBDURAL_WINDOW = (80, 200)
+SOFT_TISSUE_WINDOW = (40, 380)
+BONE_WINDOW = (600, 2800)
+GRAY_WHITE_DIFFERENTIATION_WINDOW = (40, 40)
 
-ALL_WINDOW_VALUES = [(BRAIN_MATTER_WINDOW_L, BRAIN_MATTER_WINDOW_W),
-                     (SUBDURAL_WINDOW_L, SUBDURAL_WINDOW_W),
-                     (SOFT_TISSUE_WINDOW_L, SOFT_TISSUE_WINDOW_W),
-                     (BONE_WINDOW_L, BONE_WINDOW_W),
-                     (GRAY_WHITE_DIFFERENTIATION_WINDOW_L, GRAY_WHITE_DIFFERENTIATION_WINDOW_L)
+ALL_WINDOW_VALUES = [BRAIN_MATTER_WINDOW,
+                     SUBDURAL_WINDOW,
+                     SOFT_TISSUE_WINDOW,
+                     BONE_WINDOW,
+                     GRAY_WHITE_DIFFERENTIATION_WINDOW
                      ]
 
 
@@ -50,8 +45,8 @@ def get_first_of_dicom_field_as_int(x):
 def get_windowing(data):
     intercept_coordinates = ('0028', '1052')
     slope_coordinates = ('0028', '1053')
-    dicom_fields = [data[intercept_coordinates].value,  # intercept
-                    data[slope_coordinates].value]  # slope
+    dicom_fields = [data[intercept_coordinates].value,
+                    data[slope_coordinates].value]
     return [get_first_of_dicom_field_as_int(x) for x in dicom_fields]
 
 
