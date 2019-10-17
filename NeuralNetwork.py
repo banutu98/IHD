@@ -19,27 +19,28 @@ class MyModel:
 
     @staticmethod
     def get_base_model(network, input_shape, pooling_method):
-        if network.lower() == 'nas':
+        network = network.lower()
+        if network == 'nas':
             if input_shape != (331, 331, 3):
                 print_error('WARNING! The input shape is not the default one!!! Proceeding anyway!')
             return NASNetLarge(input_shape=input_shape, include_top=False, pooling=pooling_method,
                                weights=None)
-        elif network.lower() == 'inception':
+        elif network == 'inception':
             if input_shape != (299, 299, 3):
                 print_error('WARNING! The input shape is not the default one!!! Proceeding anyway!')
             return InceptionResNetV2(input_shape=input_shape, include_top=False, pooling=pooling_method,
                                      weights='imagenet')
-        elif network.lower() == 'xception':
+        elif network == 'xception':
             if input_shape != (299, 299, 3):
                 print_error('WARNING! The input shape is not the default one!!! Proceeding anyway!')
             return Xception(input_shape=input_shape, include_top=False, pooling=pooling_method,
                             weights='imagenet')
-        elif network.lower() == 'densenet':
+        elif network == 'densenet':
             if input_shape != (224, 224, 3):
                 print_error('WARNING! The input shape is not the default one!!! Proceeding anyway!')
             return DenseNet201(input_shape=input_shape, include_top=False, pooling=pooling_method,
                                weights='imagenet')
-        elif network.lower() == 'resnet':
+        elif network == 'resnet':
             if input_shape != (224, 224, 3):
                 print_error('WARNING! The input shape is not the default one!!! Proceeding anyway!')
             return ResNet50(input_shape=input_shape, include_top=False, pooling=pooling_method,
