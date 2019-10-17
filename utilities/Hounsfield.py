@@ -5,8 +5,7 @@ import numpy as np
 # function for viewing dicom images
 
 
-def visualize_dicom(images_path, image_id, colormap):
-    filename = create_filename(images_path, image_id)
+def visualize_dicom(filename, colormap):
     ds = pydicom.dcmread(filename)
     plt.imshow(ds.pixel_array, cmap=colormap)
     plt.show()
@@ -16,8 +15,8 @@ def visualize_dicom(images_path, image_id, colormap):
 # The latter fields are normally recorded as 1 (slope) and -1024 (intercept) and can be found in the metadata.
 
 
-def apply_hounsfield_transformation(images_path, image_id):
-    dicom = pydicom.read_file(create_filename(images_path, image_id))
+def apply_hounsfield_transformation(filename):
+    dicom = pydicom.read_file(filename)
     image = dicom.pixel_array.astype(np.float64)
 
     intercept = dicom.RescaleIntercept
@@ -34,15 +33,10 @@ def apply_hounsfield_transformation(images_path, image_id):
     return image
 
 
-def create_filename(images_path, image_id):
-    return images_path + 'ID_' + image_id + '.dcm'
-
-
 # code to test
 if __name__ == '__main__':
-    images_path = r"../images/"
-    image_id = "0000ca2f6"
-    visualize_dicom(images_path, image_id, plt.cm.bone)
-    converted_image = apply_hounsfield_transformation(images_path, image_id)
+    filename = r"../images/ID_0000ca2f6.dcm"
+    visualize_dicom(filename, plt.cm.bone)
+    converted_image = apply_hounsfield_transformation(filename)
     plt.imshow(converted_image, cmap=plt.cm.bone)
     plt.show()
