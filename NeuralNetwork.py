@@ -1,16 +1,11 @@
 from keras.applications import NASNetLarge, InceptionResNetV2, Xception, DenseNet201, ResNet50
-from keras.layers import Dense, Input, Dropout, Conv2D, Flatten, AveragePooling2D, BatchNormalization, LeakyReLU, GlobalAveragePooling2D
-from keras.models import Model, Sequential
-from keras.models import load_model
-from keras.optimizers import SGD, Adamax, Nadam
-from keras.preprocessing.image import ImageDataGenerator
-from keras.utils import np_utils
-from keras.utils import plot_model
-from keras.utils import to_categorical
+from keras.layers import Dense, Dropout, BatchNormalization, LeakyReLU
+from keras.models import Sequential
+
 from utilities.utils import print_error
 
 
-class MyModel:
+class StandardModel:
 
     def __init__(self, network, input_shape, pooling_method='max', classes=2, use_softmax=True):
         self.base_model = self.get_base_model(network, input_shape, pooling_method)
@@ -60,8 +55,7 @@ class MyModel:
         model.add(BatchNormalization())
         model.add(LeakyReLU(alpha=0.1))
         model.add(Dropout(0.3))
-        if self.use_softmax:
-            model.add(Dense(2, activation='softmax'))
+        model.add(Dense(2, activation='softmax'))
         return model
 
     def build_multi_class_model(self):

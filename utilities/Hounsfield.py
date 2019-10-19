@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import pydicom
 import numpy as np
 
+
 # function for viewing dicom images
 
 
@@ -9,6 +10,7 @@ def visualize_dicom(filename, colormap):
     ds = pydicom.dcmread(filename)
     plt.imshow(ds.pixel_array, cmap=colormap)
     plt.show()
+
 
 # function for HU Transformation
 # Formula -> HU = Gray_Value * slope + intercept
