@@ -1,9 +1,8 @@
-from NeuralNetwork import MyModel
-from utilities import utils, Output
+from NeuralNetwork import StandardModel
 
 
 def main():
-    model = MyModel('inception', (512, 512, 3))
+    model = StandardModel('inception', (512, 512, 3))
     model.build_binary_model().summary()
 
 

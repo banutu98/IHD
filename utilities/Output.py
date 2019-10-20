@@ -22,7 +22,6 @@ def create_output_line(image_id, hemorrhage_type, probability):
     return "ID_" + image_id + "_" + hemorrhage_type + "," + str(probability) + "\n"
 
 
-
 # code for testing -> time for creating csv approx 10 seconds
 if __name__ == '__main__':
     start = time.time()
