@@ -15,11 +15,11 @@ BRIGHTNESS_DELTA = 0.4
 # the larger they are the more the image will be blurred
 
 
-def blur_image(pixel_matrix, kernel_size_width=KERNEL_WIDTH, kernel_size_height=KERNEL_WIDTH):
+def blur_image(pixel_matrix, kernel_size_width=KERNEL_WIDTH, kernel_size_height=KERNEL_HEIGHT):
     return cv2.GaussianBlur(pixel_matrix, (kernel_size_width, kernel_size_height), cv2.BORDER_DEFAULT)
 
 
-def noisy(image, mean=GAUSS_STDDEV, stddev=GAUSS_MEAN):
+def noisy(image, mean=GAUSS_MEAN, stddev=GAUSS_STDDEV):
     gauss = np.random.normal(mean, stddev, image.shape)
     noisy = image + gauss
     noisy_min = np.amin(noisy)
