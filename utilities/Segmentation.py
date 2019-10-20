@@ -4,9 +4,8 @@ import pydicom
 import numpy as np
 from skimage import morphology
 
-from Window import image_resample
-from Window import image_windowed
-from Hounsfield import apply_hounsfield_transformation
+from utilities.Window import image_resample, image_windowed
+from utilities.Hounsfield import apply_hounsfield_transformation
 
 
 def image_background_segmentation(image_path, WL=40, WW=80, display=False, rescale=True):
@@ -15,7 +14,7 @@ def image_background_segmentation(image_path, WL=40, WW=80, display=False, resca
     dcm_head = pydicom.read_file(image_path)
     img = image_resample(img, dcm_head)
     # use values outside the window as well, helps with segmentation
-    img = image_windowed(img, custom_center=WL, custom_width=WW)
+    img = image_windowed(img, custom_center=WL, custom_width=WW, rescale=False)
 
     # Calculate the outside values by hand (again)
     lB = WW - WL
@@ -43,7 +42,6 @@ def image_background_segmentation(image_path, WL=40, WW=80, display=False, resca
         show_images(background_separation, image_path, img, mask)
 
     img = mask * img
-
 
     if rescale:
         img_min = np.amin(img)

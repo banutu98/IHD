@@ -3,7 +3,7 @@ import scipy.ndimage
 import matplotlib.pyplot as plt
 import pydicom
 
-from Hounsfield import apply_hounsfield_transformation
+from utilities.Hounsfield import apply_hounsfield_transformation
 
 # There are at least 5 windows that a radiologist goes through for each scan!
 # Brain Matter window : W:80 L:40
@@ -25,7 +25,7 @@ ALL_WINDOW_VALUES = [BRAIN_MATTER_WINDOW,
                      ]
 
 
-def image_windowed(image, custom_center=50, custom_width=130):
+def image_windowed(image, custom_center=50, custom_width=130, rescale=True):
     '''
     Important thing to note in this function: The image migth be changed in place!
     '''
@@ -35,7 +35,8 @@ def image_windowed(image, custom_center=50, custom_width=130):
     # Including another value for values way outside the range, to (hopefully) make segmentation processes easier.
     image[image < min_value] = min_value
     image[image > max_value] = max_value
-
+    if rescale:
+        image = (image - min_value) / (max_value - min_value)
     return image
 
 
