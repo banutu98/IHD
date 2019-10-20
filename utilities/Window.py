@@ -1,6 +1,9 @@
+import numpy as np
+import scipy.ndimage
 import matplotlib.pyplot as plt
 import pydicom
-import os
+
+from utilities.Hounsfield import apply_hounsfield_transformation
 
 # There are at least 5 windows that a radiologist goes through for each scan!
 # Brain Matter window : W:80 L:40
@@ -22,43 +25,36 @@ ALL_WINDOW_VALUES = [BRAIN_MATTER_WINDOW,
                      ]
 
 
-def window_image(img, window_center, window_width, intercept, slope, rescale=True):
-    img = img * slope + intercept
-    img_min = window_center - window_width // 2
-    img_max = window_center + window_width // 2
-    img[img < img_min] = img_min
-    img[img > img_max] = img_max
+def image_windowed(image, custom_center=50, custom_width=130, rescale=True):
+    '''
+    Important thing to note in this function: The image migth be changed in place!
+    '''
+    min_value = custom_center - (custom_width / 2)
+    max_value = custom_center + (custom_width / 2)
 
+    # Including another value for values way outside the range, to (hopefully) make segmentation processes easier.
+    image[image < min_value] = min_value
+    image[image > max_value] = max_value
     if rescale:
-        img = (img - img_min) / (img_max - img_min)
-
-    return img
-
-
-def get_first_of_dicom_field_as_int(x):
-    if isinstance(x, pydicom.multival.MultiValue):
-        return int(x[0])
-    else:
-        return int(x)
+        image = (image - min_value) / (max_value - min_value)
+    return image
 
 
-def get_windowing(data):
-    intercept_coordinates = ('0028', '1052')
-    slope_coordinates = ('0028', '1053')
-    dicom_fields = [data[intercept_coordinates].value,
-                    data[slope_coordinates].value]
-    return [get_first_of_dicom_field_as_int(x) for x in dicom_fields]
+def image_resample(image, dicom_header, new_spacing=[1, 1]):
+    spacing = map(float, dicom_header.PixelSpacing)
+    spacing = np.array(list(spacing))
+    resize_factor = spacing / new_spacing
+    new_real_shape = image.shape * resize_factor
+    new_shape = np.round(new_real_shape)
+    real_resize_factor = new_shape / image.shape
+
+    image = scipy.ndimage.interpolation.zoom(image, real_resize_factor)
+
+    return image
 
 
 if __name__ == '__main__':
-    case = os.path.join('.', 'ID_000012eaf.dcm')
-
-    data = pydicom.read_file(case)
-
-    intercept, slope = get_windowing(data)
-    img = pydicom.read_file(case).pixel_array
-
-    windowed_img = window_image(img, 600, 2800, intercept, slope)
-
-    plt.imshow(windowed_img, cmap=plt.cm.bone)
+    # img = pydicom.read_file('ID_00019828f.dcm').pixel_array
+    img = image_windowed(apply_hounsfield_transformation('ID_00019828f.dcm'), 40, 80, True)
+    plt.imshow(img, cmap='bone')
     plt.show()

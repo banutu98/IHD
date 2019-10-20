@@ -41,10 +41,9 @@ if __name__ == '__main__':
 
     data = pydicom.read_file(case)
 
-    intercept, slope = Window.get_windowing(data)
     img = pydicom.read_file(case).pixel_array
 
-    windowed_img = Window.window_image(img, 600, 2800, intercept, slope)
+    windowed_img = Window.image_windowed(img, 600, 2800)
 
     blurred_img = blur_image(windowed_img)
 
