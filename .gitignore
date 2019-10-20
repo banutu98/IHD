@@ -1,5 +1,2 @@
-*.csv
-*.dcm
 *.pyc
-**/data
 **/.idea
