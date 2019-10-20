@@ -23,12 +23,12 @@ def image_background_segmentation(image_path, WL=40, WW=80, display=False):
     uB = WW + WL
 
     # Keep only values inside of the window
-    background_seperation = np.logical_and(img > lB, img < uB)
+    background_separation = np.logical_and(img > lB, img < uB)
 
     # Get largest connected component:
     # From https://github.com/nilearn/nilearn/blob/master/nilearn/_utils/ndimage.py
-    background_seperation = morphology.dilation(background_seperation, np.ones((5, 5)))
-    labels, label_nb = scipy.ndimage.label(background_seperation)
+    background_separation = morphology.dilation(background_separation, np.ones((5, 5)))
+    labels, label_nb = scipy.ndimage.label(background_separation)
 
     label_count = np.bincount(labels.ravel().astype(np.int))
     # discard the 0 label
@@ -41,29 +41,30 @@ def image_background_segmentation(image_path, WL=40, WW=80, display=False):
     mask = morphology.dilation(mask, np.ones((3, 3)))  # dilate the mask again
 
     if display:
-        plt.figure(figsize=(15, 2.5))
-        plt.subplot(141)
-        plt.imshow(img, cmap='bone')
-        plt.title('Original Images')
-        plt.axis('off')
-
-        plt.subplot(142)
-        plt.imshow(background_seperation)
-        plt.title('Segmentation')
-        plt.axis('off')
-
-        plt.subplot(143)
-        plt.imshow(mask)
-        plt.title('Mask')
-        plt.axis('off')
-
-        plt.subplot(144)
-        plt.imshow(mask * img, cmap='bone')
-        plt.title('Image * Mask')
-        plt.suptitle(image_path)
-        plt.axis('off')
+        show_images(background_separation, image_path, img, mask)
 
     return mask * img_out
+
+
+def show_images(background_separation, image_path, img, mask):
+    plt.figure(figsize=(15, 2.5))
+    plt.subplot(141)
+    plt.imshow(img, cmap='bone')
+    plt.title('Original Images')
+    plt.axis('off')
+    plt.subplot(142)
+    plt.imshow(background_separation)
+    plt.title('Segmentation')
+    plt.axis('off')
+    plt.subplot(143)
+    plt.imshow(mask)
+    plt.title('Mask')
+    plt.axis('off')
+    plt.subplot(144)
+    plt.imshow(mask * img, cmap='bone')
+    plt.title('Image * Mask')
+    plt.suptitle(image_path)
+    plt.axis('off')
 
 
 if __name__ == '__main__':
