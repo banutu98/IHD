@@ -9,14 +9,13 @@ from Window import image_windowed
 from Hounsfield import apply_hounsfield_transformation
 
 
-def image_background_segmentation(image_path, WL=40, WW=80, display=False):
+def image_background_segmentation(image_path, WL=40, WW=80, display=False, rescale=True):
     # img = image_to_hu(image_path)
     img = apply_hounsfield_transformation(image_path)
     dcm_head = pydicom.read_file(image_path)
     img = image_resample(img, dcm_head)
-    img_out = img.copy()
     # use values outside the window as well, helps with segmentation
-    img = image_windowed(img, custom_center=WL, custom_width=WW, out_side_val=True)
+    img = image_windowed(img, custom_center=WL, custom_width=WW)
 
     # Calculate the outside values by hand (again)
     lB = WW - WL
@@ -43,7 +42,15 @@ def image_background_segmentation(image_path, WL=40, WW=80, display=False):
     if display:
         show_images(background_separation, image_path, img, mask)
 
-    return mask * img_out
+    img = mask * img
+
+
+    if rescale:
+        img_min = np.amin(img)
+        img_max = np.amax(img)
+        img = (img - img_min) / (img_max - img_min)
+
+    return img
 
 
 def show_images(background_separation, image_path, img, mask):
@@ -68,5 +75,8 @@ def show_images(background_separation, image_path, img, mask):
 
 
 if __name__ == '__main__':
-    image_background_segmentation('ID_00019828f.dcm', 40, 80, display=True)
+    result = image_background_segmentation('ID_0001de0e8.dcm', 40, 80, display=False, rescale=True)
+
+    plt.imshow(result, cmap='bone')
+
     plt.show()

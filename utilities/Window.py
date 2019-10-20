@@ -25,7 +25,7 @@ ALL_WINDOW_VALUES = [BRAIN_MATTER_WINDOW,
                      ]
 
 
-def image_windowed(image, custom_center=50, custom_width=130, out_side_val=False):
+def image_windowed(image, custom_center=50, custom_width=130):
     '''
     Important thing to note in this function: The image migth be changed in place!
     '''
@@ -33,18 +33,8 @@ def image_windowed(image, custom_center=50, custom_width=130, out_side_val=False
     max_value = custom_center + (custom_width / 2)
 
     # Including another value for values way outside the range, to (hopefully) make segmentation processes easier.
-    out_value_min = custom_center - custom_width
-    out_value_max = custom_center + custom_width
-
-    if out_side_val:
-        image[np.logical_and(image < min_value, image > out_value_min)] = min_value
-        image[np.logical_and(image > max_value, image < out_value_max)] = max_value
-        image[image < out_value_min] = out_value_min
-        image[image > out_value_max] = out_value_max
-
-    else:
-        image[image < min_value] = min_value
-        image[image > max_value] = max_value
+    image[image < min_value] = min_value
+    image[image > max_value] = max_value
 
     return image
 
