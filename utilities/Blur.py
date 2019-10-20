@@ -7,7 +7,7 @@ import numpy as np
 
 KERNEL_WIDTH = 13
 KERNEL_HEIGHT = 13
-GAUSS_MEAN = 0.5
+GAUSS_MEAN = 0.1
 GAUSS_STDDEV = 0.05
 BRIGHTNESS_DELTA = 0.4
 
@@ -15,11 +15,11 @@ BRIGHTNESS_DELTA = 0.4
 # the larger they are the more the image will be blurred
 
 
-def blur_image(pixel_matrix, kernel_size_width, kernel_size_height):
+def blur_image(pixel_matrix, kernel_size_width=KERNEL_WIDTH, kernel_size_height=KERNEL_WIDTH):
     return cv2.GaussianBlur(pixel_matrix, (kernel_size_width, kernel_size_height), cv2.BORDER_DEFAULT)
 
 
-def noisy(image, mean, stddev):
+def noisy(image, mean=GAUSS_STDDEV, stddev=GAUSS_MEAN):
     gauss = np.random.normal(mean, stddev, image.shape)
     noisy = image + gauss
     noisy_min = np.amin(noisy)
@@ -28,7 +28,7 @@ def noisy(image, mean, stddev):
     return noisy
 
 
-def adjust_brightness(image, delta):
+def adjust_brightness(image, delta=BRIGHTNESS_DELTA):
     image += delta
     image[image < 0] = 0
     image[image > 1] = 1
@@ -46,13 +46,13 @@ if __name__ == '__main__':
 
     windowed_img = Window.window_image(img, 600, 2800, intercept, slope)
 
-    blurred_img = blur_image(windowed_img, KERNEL_HEIGHT, KERNEL_WIDTH)
+    blurred_img = blur_image(windowed_img)
 
     plt.imshow(windowed_img, cmap=plt.cm.bone)
     plt.show()
     plt.imshow(blurred_img, cmap=plt.cm.bone)
     plt.show()
-    plt.imshow(noisy(blurred_img, GAUSS_MEAN, GAUSS_STDDEV), cmap=plt.cm.bone)
+    plt.imshow(noisy(blurred_img), cmap=plt.cm.bone)
     plt.show()
-    plt.imshow(adjust_brightness(windowed_img, BRIGHTNESS_DELTA), cmap=plt.cm.bone)
+    plt.imshow(adjust_brightness(windowed_img), cmap=plt.cm.bone)
     plt.show()
