@@ -39,7 +39,7 @@ class LSTMDataGenerator(Sequence):
         if self.labels is not None:  # training phase
             y = np.empty((self.batch_size, 6), dtype=np.float32)
             for i, seq in enumerate(list_ids_temp):
-                imgs = np.array(list(map(hounsfield_func, seq))).swapaxes(0, len(self.img_size)-1)
+                imgs = np.array(list(map(hounsfield_func, seq)))
                 x[i, ] = imgs
                 y[i, ] = self.labels.iloc[i]
             return x, y

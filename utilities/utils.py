@@ -38,7 +38,6 @@ def extract_csv_partition():
 
 def extract_metadata(data_prefix='../data'):
     filenames = glob.glob(os.path.join(data_prefix, "*.dcm"))
-    print(filenames)
     get_id = lambda p: os.path.splitext(os.path.basename(p))[0]
     ids = map(get_id, filenames)
     dcms = map(pydicom.dcmread, filenames)
@@ -55,7 +54,6 @@ def extract_metadata(data_prefix='../data'):
     meta_df = pd.DataFrame(meta_dict)
     del meta_dict
     meta_df['id'] = pd.Series(ids, index=meta_df.index)
-    print(meta_df['id'])
     split_cols = ['ImagePositionPatient1', 'ImagePositionPatient2',
                   'ImagePositionPatient3', 'ImageOrientationPatient1',
                   'ImageOrientationPatient2', 'ImageOrientationPatient3',
@@ -70,11 +68,10 @@ def extract_metadata(data_prefix='../data'):
 
 
 def combine_labels_metadata(data_prefix='../data'):
-    meta_df = extract_metadata(os.path.join(data_prefix, 'newdata'))
-    df = get_csv_train(os.path.join(data_prefix))
+    meta_df = extract_metadata(data_prefix)
+    df = get_csv_train(data_prefix)
     df = df.merge(meta_df, how='left', on='id').dropna()
     df.sort_values(by='ImagePositionPatient3', inplace=True, ascending=False)
-    print(os.path.join(data_prefix, 'train_meta.csv'))
     df.to_csv(os.path.join(data_prefix, 'train_meta.csv'))
     return df
 
