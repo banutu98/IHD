@@ -38,7 +38,6 @@ def extract_csv_partition():
 
 def extract_metadata(data_prefix='../data'):
     filenames = glob.glob(os.path.join(data_prefix, "*.dcm"))
-    print(filenames)
     get_id = lambda p: os.path.splitext(os.path.basename(p))[0]
     ids = map(get_id, filenames)
     dcms = map(pydicom.dcmread, filenames)
@@ -55,7 +54,6 @@ def extract_metadata(data_prefix='../data'):
     meta_df = pd.DataFrame(meta_dict)
     del meta_dict
     meta_df['id'] = pd.Series(ids, index=meta_df.index)
-    print(meta_df['id'])
     split_cols = ['ImagePositionPatient1', 'ImagePositionPatient2',
                   'ImagePositionPatient3', 'ImageOrientationPatient1',
                   'ImageOrientationPatient2', 'ImageOrientationPatient3',
@@ -74,11 +72,17 @@ def combine_labels_metadata(data_prefix='../data'):
     df = get_csv_train(data_prefix)
     df = df.merge(meta_df, how='left', on='id').dropna()
     df.sort_values(by='ImagePositionPatient3', inplace=True, ascending=False)
-    # df.to_csv(os.path.join(prefix_data, 'train_meta.csv'))
+    df.to_csv(os.path.join(data_prefix, 'train_meta.csv'))
     return df
 
 
+def get_study_sequences(data_prefix="../data"):
+    df = pd.read_csv(os.path.join(data_prefix, "train_meta.csv"))
+    sequences = df.groupby("StudyInstanceUID")['id'].apply(list)
+    return sequences
+
+
 if __name__ == '__main__':
-    partition = extract_csv_partition()
+    # partition = extract_csv_partition()
     # print(partition.index.values)
-    # print(combine_labels_metadata())
+    print(combine_labels_metadata())
