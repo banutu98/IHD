@@ -1,7 +1,8 @@
 import cv2
 import os
 import pydicom
-from utilities import Window
+from utilities import Window, Hounsfield
+from utilities.Segmentation import image_background_segmentation
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -37,13 +38,13 @@ def adjust_brightness(image, delta=BRIGHTNESS_DELTA):
 
 # code to test
 if __name__ == '__main__':
-    case = os.path.join('..', 'images', 'ID_000012eaf.dcm')
+    case = os.path.join('../data/train', 'ID_00019828f.dcm')
 
     data = pydicom.read_file(case)
 
     img = pydicom.read_file(case).pixel_array
 
-    windowed_img = Window.image_windowed(img, 600, 2800)
+    windowed_img = image_background_segmentation('../data/train/ID_00019828f.dcm', 40, 80, display=False, rescale=True)
 
     blurred_img = blur_image(windowed_img)
 
