@@ -3,27 +3,29 @@ import pandas as pd
 import glob
 import pydicom
 import numpy as np
+from utilities.defines import TRAIN_DIR
 
 
 def print_error(message):
-    c_red = '\033[91m'
+    c_red = '\033[95m'
     c_end = '\033[0m'
     print(c_red + message + c_end)
 
 
-def get_csv_train(data_prefix='../data'):
+def get_csv_train(data_prefix=TRAIN_DIR):
     train_df = pd.read_csv(os.path.join(data_prefix, 'stage_1_train.csv'))
     train_df[['ID', 'subtype']] = train_df['ID'].str.rsplit('_', 1,
                                                             expand=True)
     train_df = train_df.rename(columns={'ID': 'id', 'Label': 'label'})
     train_df = pd.pivot_table(train_df, index='id',
                               columns='subtype', values='label')
+    train_df.to_csv("labels.csv")
     return train_df
 
 
 def extract_csv_partition():
     df = get_csv_train()
-    meta_data_train = combine_labels_metadata('../data/train')
+    meta_data_train = combine_labels_metadata(TRAIN_DIR)
     negative, positive = df.loc[df['any'] == 0], df.loc[df['any'] == 1]
     negative_study_uids = list(meta_data_train.query("any == 0")['StudyInstanceUID'])
     indices = np.arange(min(len(negative_study_uids), len(positive.index)))
@@ -36,7 +38,7 @@ def extract_csv_partition():
     return pd.concat([positive, negative])
 
 
-def extract_metadata(data_prefix='../data'):
+def extract_metadata(data_prefix=TRAIN_DIR):
     filenames = glob.glob(os.path.join(data_prefix, "*.dcm"))
     get_id = lambda p: os.path.splitext(os.path.basename(p))[0]
     ids = map(get_id, filenames)
@@ -67,7 +69,7 @@ def extract_metadata(data_prefix='../data'):
     return meta_df
 
 
-def combine_labels_metadata(data_prefix='../data'):
+def combine_labels_metadata(data_prefix=TRAIN_DIR):
     meta_df = extract_metadata(data_prefix)
     df = get_csv_train(data_prefix)
     df = df.merge(meta_df, how='left', on='id').dropna()
@@ -76,8 +78,8 @@ def combine_labels_metadata(data_prefix='../data'):
     return df
 
 
-def get_study_sequences(data_prefix="../data"):
-    df = pd.read_csv(os.path.join(data_prefix, "train_meta.csv"))
+def get_study_sequences(data_prefix=TRAIN_DIR):
+    df = pd.read_csv(os.path.join(data_prefix, "metadata_train.csv"))
     sequences = df.groupby("StudyInstanceUID")['id'].apply(list)
     return sequences
 
@@ -85,4 +87,5 @@ def get_study_sequences(data_prefix="../data"):
 if __name__ == '__main__':
     # partition = extract_csv_partition()
     # print(partition.index.values)
-    print(combine_labels_metadata())
+    # print(combine_labels_metadata())
+    get_csv_train(r'D:\Proiecte\IHD\data\train')

@@ -25,7 +25,7 @@ class RecurrentModel:
         output_layer = Dense(5, activation='softmax')(final_relu_layer)
         return Model(inputs=input_lstm, outputs=output_layer)
 
-    def build_convs_model(self):
+    def build_convs_model(self, conv_model):
         if self.convolutions_shape is None:
             print_error('Convolutions shape is missing! Aborting!')
             sys.exit(1)

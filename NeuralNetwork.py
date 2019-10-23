@@ -61,10 +61,10 @@ class StandardModel:
     def build_multi_class_model(self):
         model = Sequential()
         model.add(self.base_model)
-        model.add(Dense(96))
-        model.add(BatchNormalization())
-        model.add(LeakyReLU(alpha=0.1))
-        model.add(Dropout(0.3))
         if self.use_softmax:
+            model.add(Dense(96))
+            model.add(BatchNormalization())
+            model.add(LeakyReLU(alpha=0.1))
+            model.add(Dropout(0.3))
             model.add(Dense(5, activation='softmax'))
         return model
