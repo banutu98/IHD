@@ -1,5 +1,5 @@
 from keras.applications import NASNetLarge, InceptionResNetV2, Xception, DenseNet201, ResNet50
-from keras.layers import Dense, Dropout, BatchNormalization, LeakyReLU
+from keras.layers import Dense, Dropout, BatchNormalization, LeakyReLU, LSTM, TimeDistributed
 from keras.models import Sequential
 
 from utilities.utils import print_error
@@ -59,12 +59,19 @@ class StandardModel:
         return model
 
     def build_multi_class_model(self):
-        model = Sequential()
-        model.add(self.base_model)
         if self.use_softmax:
+            model = Sequential()
+            model.add(self.base_model)
             model.add(Dense(96))
             model.add(BatchNormalization())
             model.add(LeakyReLU(alpha=0.1))
             model.add(Dropout(0.3))
+            model.add(Dense(5, activation='softmax'))
+        else:
+            model = Sequential()
+            model.add(TimeDistributed(self.base_model))
+            model.add(LSTM(32, dropout=0.3, recurrent_dropout=0.3, activation='softsign',
+                           input_shape=(None, *self.base_model.layers[-1].output_shape)))
+            model.add(Dense(64, activation='relu'))
             model.add(Dense(5, activation='softmax'))
         return model
