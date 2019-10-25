@@ -5,6 +5,16 @@ import pydicom
 import numpy as np
 from utilities.defines import TRAIN_DIR
 
+def get_sequence_clipping_order(seq_length):
+    indices = []
+    elem = 0
+    for idx, i in enumerate(reversed(range(seq_length))):
+        indices.append(elem)
+        if idx % 2 == 0:
+            elem += i
+        else:
+            elem -= i
+    return indices
 
 def print_error(message):
     c_red = '\033[95m'
