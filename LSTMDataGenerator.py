@@ -2,12 +2,13 @@ import os
 from keras.utils import Sequence
 import numpy as np
 from Preprocessor import Preprocessor
+from utilities.utils import get_sequence_clipping_order
 
 
 class LSTMDataGenerator(Sequence):
 
     def __init__(self, list_ids, labels=None, batch_size=1, img_size=(512, 512, 3),
-                 img_dir='data/train', shuffle=True):
+                 sequence_size=20, img_dir='data/train', shuffle=True):
         # here, list_ids is a series of lists; each list represents an
         # ordered sequence of scans that compose a single study
         self.list_ids = list_ids
@@ -15,6 +16,7 @@ class LSTMDataGenerator(Sequence):
         self.labels = labels
         self.batch_size = batch_size
         self.img_size = img_size
+        self.sequence_size = sequence_size
         self.img_dir = img_dir
         self.shuffle = shuffle
         self.on_epoch_end()
@@ -34,19 +36,33 @@ class LSTMDataGenerator(Sequence):
             np.random.shuffle(self.indices)
 
     def __data_generation(self, list_ids_temp):
-        x = np.empty((self.batch_size, *self.img_size))
+        x = np.empty((self.batch_size, self.sequence_size, *self.img_size))
         preprocess_func = lambda im: Preprocessor.preprocess(os.path.join(self.img_dir, im + ".dcm"))
         if self.labels is not None:  # training phase
-            y = np.empty((self.batch_size, 6), dtype=np.float32)
+            y = np.empty((self.batch_size, 5), dtype=np.float32)
             for i, seq in enumerate(list_ids_temp):
                 imgs = np.array(list(map(preprocess_func, seq)))
                 imgs = np.repeat(imgs[..., np.newaxis], 3, -1)
+                diff = len(seq) - self.sequence_size
+                if diff < 0:
+                    padding = np.repeat(np.zeros(imgs.shape[1:])[np.newaxis, ...], abs(diff), 0)
+                    imgs = np.concatenate((imgs, padding), axis=0)
+                elif diff > 0:
+                    indices = get_sequence_clipping_order(len(seq))
+                    imgs = np.delete(imgs, indices[:diff], 0)
                 x[i, ] = imgs
                 y[i, ] = self.labels.iloc[i]
             return x, y
-        else:
+        else:                       # test phase
             for i, seq in enumerate(list_ids_temp):
                 imgs = np.array(list(map(preprocess_func, seq)))
                 imgs = np.repeat(imgs[..., np.newaxis], 3, -1)
+                diff = len(seq) - self.sequence_size
+                if diff < 0:
+                    padding = np.repeat(np.zeros(imgs.shape[1:])[np.newaxis, ...], abs(diff), 0)
+                    imgs = np.concatenate((imgs, padding), axis=0)
+                elif diff > 0:
+                    indices = get_sequence_clipping_order(len(seq))
+                    imgs = np.delete(imgs, indices[:diff], 0)
                 x[i, ] = imgs
             return x
