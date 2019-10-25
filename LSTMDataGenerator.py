@@ -51,7 +51,7 @@ class LSTMDataGenerator(Sequence):
                     indices = get_sequence_clipping_order(len(seq))
                     imgs = np.delete(imgs, indices[:diff], 0)
                 x[i, ] = imgs
-                y[i, ] = self.labels.iloc[i]
+                y[i, ] = self.labels.iloc[i, 1:]
             return x, y
         else:                       # test phase
             for i, seq in enumerate(list_ids_temp):
