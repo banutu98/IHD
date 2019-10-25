@@ -37,11 +37,11 @@ class LSTMDataGenerator(Sequence):
 
     def __data_generation(self, list_ids_temp):
         x = np.empty((self.batch_size, self.sequence_size, *self.img_size))
-        hounsfield_func = lambda im: Preprocessor.preprocess(os.path.join(self.img_dir, im + ".dcm"))
+        preprocess_func = lambda im: Preprocessor.preprocess(os.path.join(self.img_dir, im + ".dcm"))
         if self.labels is not None:  # training phase
             y = np.empty((self.batch_size, 5), dtype=np.float32)
             for i, seq in enumerate(list_ids_temp):
-                imgs = np.array(list(map(hounsfield_func, seq)))
+                imgs = np.array(list(map(preprocess_func, seq)))
                 imgs = np.repeat(imgs[..., np.newaxis], 3, -1)
                 diff = len(seq) - self.sequence_size
                 if diff < 0:
@@ -55,7 +55,7 @@ class LSTMDataGenerator(Sequence):
             return x, y
         else:                       # test phase
             for i, seq in enumerate(list_ids_temp):
-                imgs = np.array(list(map(hounsfield_func, seq)))
+                imgs = np.array(list(map(preprocess_func, seq)))
                 imgs = np.repeat(imgs[..., np.newaxis], 3, -1)
                 diff = len(seq) - self.sequence_size
                 if diff < 0:

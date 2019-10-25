@@ -10,11 +10,11 @@ from keras.optimizers import Adamax
 from DataGenerator import DataGenerator
 from LSTMDataGenerator import LSTMDataGenerator
 from NeuralNetwork import StandardModel
-from RecurrentNetwork import RecurrentModel
 from utilities.defines import TRAIN_DIR, MODELS_DIR
 from utilities.utils import get_study_sequences
 from utilities.utils import print_error
 from sklearn.metrics import log_loss
+from Preprocessor import Preprocessor
 
 
 def prepare_data():
@@ -23,13 +23,36 @@ def prepare_data():
     files = list(map(lambda x: os.path.splitext(os.path.basename(x))[0], files))
     filtered_csv = csv[csv.id.isin(files)]
     indices = np.random.rand(len(filtered_csv))
-    mask = indices < 0.5
+    mask = indices < 0.2
     x_train, y_train = filtered_csv[mask].id, filtered_csv.iloc[mask, 1:]
     x_test, y_test = filtered_csv[~mask].id, filtered_csv.iloc[~mask, 1:]
     x_train.reset_index(inplace=True, drop=True)
     y_train.reset_index(inplace=True, drop=True)
     x_test.reset_index(inplace=True, drop=True)
     y_test.reset_index(inplace=True, drop=True)
+    return x_train, y_train, x_test, y_test
+
+
+def extract_labels(csv, sequences):
+    result_labels = list()
+    for seq in sequences:
+        current_labels = csv[csv.id.isin(seq)]
+        current_labels = current_labels.iloc[:, 1:]
+        current_labels.reset_index(inplace=True, drop=True)
+        current_labels = current_labels.iloc[:, 1:]
+        result_labels.append(current_labels)
+    return result_labels
+
+
+def prepare_sequential_data():
+    csv = pd.read_csv(os.path.join(TRAIN_DIR, 'labels.csv'))
+    sequences = get_study_sequences()
+    indices = np.random.rand(len(sequences))
+    mask = indices < 0.1
+    x_train, x_test = sequences.iloc[mask], sequences.iloc[~mask]
+    y_train, y_test = extract_labels(csv, x_train), extract_labels(csv, x_test)
+    x_train.reset_index(inplace=True, drop=True)
+    x_test.reset_index(inplace=True, drop=True)
     return x_train, y_train, x_test, y_test
 
 
@@ -77,16 +100,66 @@ def train_multi_class_model(base_model, already_trained_model=None):
             sys.exit(1)
 
 
-# TODO: RecurrentModel Fusion + Sequences Same Size
-def train_recurrent_model():
-    sequences = get_study_sequences()
-    model = RecurrentModel(20, )
+def train_recurrent_multi_class_model(base_model, already_trained_model=None):
+    x_train, y_train, x_test, y_test = prepare_sequential_data()
+    if not already_trained_model:
+        model = StandardModel(base_model, (512, 512, 3), classes=5, use_softmax=False, pooling_method=None)
+        model = model.build_model()
+        model.compile(Adamax(), loss='categorical_crossentropy', metrics=['acc'])
+        model.fit_generator(LSTMDataGenerator(x_train, labels=y_train))
+        model.save(os.path.join(MODELS_DIR, 'model.h5'))
+        y_pred = model.predict_generator(LSTMDataGenerator(x_test))
+        print(log_loss(y_test, y_pred))
+    else:
+        model_path = os.path.join(MODELS_DIR, already_trained_model)
+        if os.path.exists(model_path):
+            model = keras.models.load_model(model_path)
+            y_pred = model.predict_generator(LSTMDataGenerator(x_test))
+            print(log_loss(y_test, y_pred))
+        else:
+            print_error("Provided model file doesn't exist! Exiting...")
+            sys.exit(1)
+
+
+def test_recurrent_network():
+    def generate_single_instance(instance):
+        images, labels = list(), list()
+        for file in instance:
+            file_path = os.path.join(TRAIN_DIR, file)
+            images.append(Preprocessor.preprocess(file_path))
+            labels.append(np.random.uniform(0, 1, 5))
+        images = np.stack(images, axis=0)
+        labels = np.stack(labels, axis=0)
+        return images, labels
+
+    model = StandardModel('xception', (512, 512, 3), classes=5, use_softmax=False, pooling_method=None)
+    model = model.build_model()
+    model.compile(Adamax(), loss='categorical_crossentropy', metrics=['acc'])
+    model.summary()
+    keras.utils.plot_model(model, show_shapes=True)
+    x_train = []
+    y_train = []
+    data = [['ID_00025ef4b.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm'],
+            ['ID_000229f2a.dcm', 'ID_000230ed7.dcm', 'ID_000270f8b.dcm'],
+            ['ID_00025ef4b.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm']]
+    for i in range(3):
+        instance_images, instance_labels = generate_single_instance(data[i])
+        x_train.append(instance_images)
+        y_train.append(instance_labels)
+    x_train = np.stack(x_train)
+    x_train = np.repeat(x_train[..., np.newaxis], 3, -1)
+    y_train = np.stack(y_train)
+    print(x_train.shape, y_train.shape)
+    model.fit(x_train, y_train, batch_size=1)
 
 
 def main():
     # TODO: Possible MODELS for training: inception, xception, resnet, densenet, nas
     # train_binary_model('xception')
-    train_multi_class_model('densenet', already_trained_model='model.h5')
+    # train_multi_class_model('densenet')
+    # prepare_sequential_data()
+    # train_recurrent_multi_class_model('xception')
+    test_recurrent_network()
 
 
 if __name__ == '__main__':
