@@ -14,6 +14,7 @@ from utilities.defines import TRAIN_DIR, MODELS_DIR
 from utilities.utils import get_study_sequences
 from utilities.utils import print_error
 from sklearn.metrics import log_loss
+from Preprocessor import Preprocessor
 
 
 def prepare_data():
@@ -99,11 +100,10 @@ def train_multi_class_model(base_model, already_trained_model=None):
             sys.exit(1)
 
 
-# TODO: RecurrentModel Fusion + Sequences Same Size
 def train_recurrent_multi_class_model(base_model, already_trained_model=None):
     x_train, y_train, x_test, y_test = prepare_sequential_data()
     if not already_trained_model:
-        model = StandardModel(base_model, (512, 512, 3), classes=5, use_softmax=False)
+        model = StandardModel(base_model, (512, 512, 3), classes=5, use_softmax=False, pooling_method=None)
         model = model.build_model()
         model.compile(Adamax(), loss='categorical_crossentropy', metrics=['acc'])
         model.fit_generator(LSTMDataGenerator(x_train, labels=y_train))
@@ -121,12 +121,45 @@ def train_recurrent_multi_class_model(base_model, already_trained_model=None):
             sys.exit(1)
 
 
+def test_recurrent_network():
+    def generate_single_instance(instance):
+        images, labels = list(), list()
+        for file in instance:
+            file_path = os.path.join(TRAIN_DIR, file)
+            images.append(Preprocessor.preprocess(file_path))
+            labels.append(np.random.uniform(0, 1, 5))
+        images = np.stack(images, axis=0)
+        labels = np.stack(labels, axis=0)
+        return images, labels
+
+    model = StandardModel('xception', (512, 512, 3), classes=5, use_softmax=False, pooling_method=None)
+    model = model.build_model()
+    model.compile(Adamax(), loss='categorical_crossentropy', metrics=['acc'])
+    model.summary()
+    keras.utils.plot_model(model, show_shapes=True)
+    x_train = []
+    y_train = []
+    data = [['ID_00025ef4b.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm'],
+            ['ID_000229f2a.dcm', 'ID_000230ed7.dcm', 'ID_000270f8b.dcm'],
+            ['ID_00025ef4b.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm']]
+    for i in range(3):
+        instance_images, instance_labels = generate_single_instance(data[i])
+        x_train.append(instance_images)
+        y_train.append(instance_labels)
+    x_train = np.stack(x_train)
+    x_train = np.repeat(x_train[..., np.newaxis], 3, -1)
+    y_train = np.stack(y_train)
+    print(x_train.shape, y_train.shape)
+    model.fit(x_train, y_train, batch_size=1)
+
+
 def main():
     # TODO: Possible MODELS for training: inception, xception, resnet, densenet, nas
     # train_binary_model('xception')
     # train_multi_class_model('densenet')
-    prepare_sequential_data()
-    train_recurrent_multi_class_model('xception')
+    # prepare_sequential_data()
+    # train_recurrent_multi_class_model('xception')
+    test_recurrent_network()
 
 
 if __name__ == '__main__':
