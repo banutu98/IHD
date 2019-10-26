@@ -42,42 +42,32 @@ class DataGenerator(Sequence):
     def __getitem__(self, index):
         indices = np.random.choice(self.indices, size=self.batch_size,
                          replace=False, p=self.weights)
-        #indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
-        list_ids_temp = [self.list_ids[k] for k in indices]
-
-        # TODO: change list_ids_temp to list of indices chosen by
-        # __getitem__
-        return self.__data_generation(list_ids_temp)
+        return self.__data_generation(indices)
 
     # Don't think this is necessary anymore, indices are sampled randomly.
     def on_epoch_end(self):
-        #self.indices = np.arange(len(self.list_ids))
-        #if self.shuffle:
-            #np.random.shuffle(self.indices)
         pass
 
-    def __data_generation(self, list_ids_temp):
+    def __data_generation(self, indices):
         x = np.empty((self.batch_size, *self.img_size))
         if self.labels is not None:  # training phase
             y = np.empty((self.batch_size, self.n_classes), dtype=np.float32)
-            for i, ID in enumerate(list_ids_temp):
-                # TODO: change ID to self.list_ids[ID]
-                image = Preprocessor.preprocess(self.img_dir + ID + ".dcm")
+            for i, idx in enumerate(indices):
+                image = Preprocessor.preprocess(self.img_dir + self.list_ids[idx] + ".dcm")
                 if self.labels.iloc[i]['any'] == 1:
                     # TODO: random module is NOT thread-safe, must
                     # come up later with a better solution
                     image = self.augment_funcs[random.randint(0, self.n_augment)](image)
                 image = np.repeat(image[..., np.newaxis], 3, -1)
                 x[i, ] = image
-                # TODO: use ID as index for labels
                 if self.n_classes == 2:
-                    y[i, ] = self.labels.iloc[i]['any']
+                    y[i, ] = self.labels.iloc[idx]['any']
                 else:
-                    y[i, ] = self.labels.iloc[i, 1:]
+                    y[i, ] = self.labels.iloc[idx, 1:]
             return x, y
         else:  # test phase
-            for i, ID in enumerate(list_ids_temp):
-                image = Preprocessor.preprocess(self.img_dir + ID + ".dcm")
+            for i, idx in enumerate(indices):
+                image = Preprocessor.preprocess(self.img_dir + self.list_ids[idx] + ".dcm")
                 image = np.repeat(image[..., np.newaxis], 3, -1)
                 x[i, ] = image
             return x
