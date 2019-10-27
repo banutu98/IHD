@@ -5,6 +5,7 @@ import pydicom
 import numpy as np
 from utilities.defines import TRAIN_DIR
 
+
 def get_sequence_clipping_order(seq_length):
     indices = []
     elem = 0
@@ -15,6 +16,7 @@ def get_sequence_clipping_order(seq_length):
         else:
             elem -= i
     return indices
+
 
 def print_error(message):
     c_red = '\033[95m'
@@ -42,7 +44,8 @@ def extract_csv_partition():
     np.random.shuffle(indices)
     negative_study_uids = np.array(negative_study_uids)[indices]
     selected_negative_studies = meta_data_train.loc[meta_data_train['StudyInstanceUID'].isin(negative_study_uids)]
-    selected_negative_studies = selected_negative_studies.drop(set(selected_negative_studies.columns).intersection(set(negative.columns)), axis=1)
+    selected_negative_studies = selected_negative_studies.drop(
+        set(selected_negative_studies.columns).intersection(set(negative.columns)), axis=1)
     negative = negative.merge(selected_negative_studies, how='left', on='id').dropna()
     negative = negative.drop(selected_negative_studies.columns, axis=1)
     return pd.concat([positive, negative])

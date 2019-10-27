@@ -39,7 +39,6 @@ def extract_labels(csv, sequences):
         current_labels = csv[csv.id.isin(seq)]
         current_labels = current_labels.iloc[:, 1:]
         current_labels.reset_index(inplace=True, drop=True)
-        current_labels = current_labels.iloc[:, 1:]
         result_labels.append(current_labels)
     return result_labels
 

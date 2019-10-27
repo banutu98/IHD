@@ -1,11 +1,10 @@
-import numpy as np
-import pydicom
 import copy
+
+import pydicom
 import scipy
 from skimage import morphology
-import matplotlib.pyplot as plt
+
 from utilities.augmentations import *
-from utilities.defines import *
 
 
 class Preprocessor:
@@ -84,10 +83,7 @@ class Preprocessor:
         image = dicom.pixel_array.astype(np.float64)
         p = Preprocessor
         image = p.apply_hounsfield(image, dicom.RescaleIntercept, dicom.RescaleSlope)
-        # image = p.image_resample(image, dicom.PixelSpacing)
         image = p.windowing(image)
-        # TODO: Segmentation is wrong! It needs fixing ASAP!
-        image = p.image_background_segmentation(image)
         return image
 
     @staticmethod

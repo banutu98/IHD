@@ -1,4 +1,4 @@
-from utilities.HemorrhageTypes import HemorrhageTypes
+from utilities.defines import HemorrhageTypes
 import time
 
 CSV_FILENAME = "Submission.csv"
