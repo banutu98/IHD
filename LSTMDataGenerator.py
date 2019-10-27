@@ -55,9 +55,7 @@ class LSTMDataGenerator(Sequence):
             for i, idx in enumerate(indices):
                 seq = self.list_ids[idx]
                 imgs = map(preprocess_func, seq)
-                # TODO: must come up with a representation for
-                # the labels of seqeunce; maybe a nested DataFrame?
-                if self.labels.iloc[idx]['any'] == 1:
+                if self.labels[idx].loc['any'].any():
                     func_idxs = np.random.randint(0, self.n_augment+1,
                                                   size=len(seq))
                     imgs = [self.augment_funcs[j](img)

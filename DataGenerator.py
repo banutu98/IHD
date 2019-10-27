@@ -59,8 +59,6 @@ class DataGenerator(Sequence):
             for i, idx in enumerate(indices):
                 image = Preprocessor.preprocess(self.img_dir + self.list_ids[idx] + ".dcm")
                 if self.labels.iloc[idx]['any'] == 1:
-                    # TODO: random module is NOT thread-safe, must
-                    # come up later with a better solution
                     image = self.augment_funcs[random.randint(0, self.n_augment)](image)
                 image = np.array(image)
                 image = np.repeat(image[..., np.newaxis], 3, -1)
