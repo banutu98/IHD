@@ -91,12 +91,6 @@ def combine_labels_metadata(data_prefix=TRAIN_DIR):
     return df
 
 
-def get_study_sequences(data_prefix=TRAIN_DIR):
-    df = pd.read_csv(os.path.join(data_prefix, "metadata_train.csv"))
-    sequences = df.groupby("StudyInstanceUID")['id'].apply(list)
-    return sequences
-
-
 if __name__ == '__main__':
     # partition = extract_csv_partition()
     # print(partition.index.values)
