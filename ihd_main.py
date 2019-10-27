@@ -32,16 +32,6 @@ def prepare_data():
     return x_train, y_train, x_test, y_test
 
 
-def extract_labels(csv, sequences):
-    result_labels = list()
-    for seq in sequences:
-        current_labels = csv[csv.id.isin(seq)]
-        current_labels = current_labels.iloc[:, 1:]
-        current_labels.reset_index(inplace=True, drop=True)
-        result_labels.append(current_labels)
-    return result_labels
-
-
 def prepare_sequential_data():
     # open label + metadata CSV
     csv = pd.read_csv(os.path.join(TRAIN_DIR, "train_meta.csv"))
@@ -166,8 +156,8 @@ def main():
     # TODO: Possible MODELS for training: inception, xception, resnet, densenet, nas
     # train_binary_model('xception')
     # train_multi_class_model('densenet')
-    prepare_sequential_data()
-    # train_recurrent_multi_class_model('xception')
+    # prepare_sequential_data()
+    train_recurrent_multi_class_model('xception')
     #test_recurrent_network()
 
 
