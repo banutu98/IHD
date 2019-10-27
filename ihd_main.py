@@ -11,7 +11,6 @@ from DataGenerator import DataGenerator
 from LSTMDataGenerator import LSTMDataGenerator
 from NeuralNetwork import StandardModel
 from utilities.defines import TRAIN_DIR, MODELS_DIR
-from utilities.utils import get_study_sequences
 from utilities.utils import print_error
 from sklearn.metrics import log_loss
 from Preprocessor import Preprocessor
@@ -44,14 +43,25 @@ def extract_labels(csv, sequences):
 
 
 def prepare_sequential_data():
-    csv = pd.read_csv(os.path.join(TRAIN_DIR, 'labels.csv'))
-    sequences = get_study_sequences()
-    indices = np.random.rand(len(sequences))
+    # open label + metadata CSV
+    csv = pd.read_csv(os.path.join(TRAIN_DIR, "train_meta.csv"))
+    # sort by study ID and position
+    csv.sort_values(by=["StudyInstanceUID", "ImagePositionPatient3"], inplace=True, ascending=False)
+    label_columns = ["any", "epidural", "intraparenchymal",
+                     "intraventricular", "subarachnoid", "subdural"]
+    # filter unnecessary columns
+    csv = csv[["StudyInstanceUID", "id"] + label_columns]
+    # get sequences of IDs (groupby preserves order)
+    sequences = csv.groupby("StudyInstanceUID")["id"].apply(list)
+    # group labels into one single column
+    csv["labels"] = csv[label_columns].values.tolist()
+    # get sequences of labels
+    labels = csv.groupby("StudyInstanceUID")["labels"].apply(list)
+    indices = np.random.rand(sequences.size)
+    # partition data
     mask = indices < 0.1
-    x_train, x_test = sequences.iloc[mask], sequences.iloc[~mask]
-    y_train, y_test = extract_labels(csv, x_train), extract_labels(csv, x_test)
-    x_train.reset_index(inplace=True, drop=True)
-    x_test.reset_index(inplace=True, drop=True)
+    x_train, x_test = list(sequences.iloc[mask]), list(sequences.iloc[~mask])
+    y_train, y_test = list(labels.iloc[mask]), list(labels.iloc[~mask])
     return x_train, y_train, x_test, y_test
 
 
@@ -156,9 +166,9 @@ def main():
     # TODO: Possible MODELS for training: inception, xception, resnet, densenet, nas
     # train_binary_model('xception')
     # train_multi_class_model('densenet')
-    # prepare_sequential_data()
+    prepare_sequential_data()
     # train_recurrent_multi_class_model('xception')
-    test_recurrent_network()
+    #test_recurrent_network()
 
 
 if __name__ == '__main__':
