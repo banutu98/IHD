@@ -19,29 +19,48 @@ class LSTMDataGenerator(Sequence):
         self.sequence_size = sequence_size
         self.img_dir = img_dir
         self.shuffle = shuffle
+        # TODO: this could be generalized with the help of
+        # an Augmenter class
+        self.n_augment = 3      # 3 data augmentation functions
+        self.augment_funcs = [blur_image,
+                              noisy,
+                              adjust_brightness,
+                              lambda img: img]      # identity function
         self.on_epoch_end()
+        if labels is not None:
+            # Weights should be a probability distribution.
+            # If the number of training instances is too large,
+            # there could be issues! (arithmetic underflow)
+            weight_func = lambda row: 1.0 if row["any"] == 0 else self.n_augment + 1
+            self.weights = labels.apply(weight_func, axis=1)
+            total = self.weights.sum()
+            self.weights = (self.weights / total).values
 
     def __len__(self):
         return len(self.indices) // self.batch_size
 
     def __getitem__(self, index):
-        indices = self.indices[index * self.batch_size:(index + 1) * self.batch_size]
-        list_ids_temp = [self.list_ids[k] for k in indices]
-
-        return self.__data_generation(list_ids_temp)
+        indices = np.random.choice(self.indices, size=self.batch_size,
+                         replace=False, p=self.weights)
+        return self.__data_generation(indices)
 
     def on_epoch_end(self):
-        self.indices = np.arange(len(self.list_ids))
-        if self.shuffle:
-            np.random.shuffle(self.indices)
+        pass
 
-    def __data_generation(self, list_ids_temp):
+    def __data_generation(self, indices):
         x = np.empty((self.batch_size, self.sequence_size, *self.img_size))
         preprocess_func = lambda im: Preprocessor.preprocess(os.path.join(self.img_dir, im + ".dcm"))
         if self.labels is not None:  # training phase
             y = np.empty((self.batch_size, 5), dtype=np.float32)
-            for i, seq in enumerate(list_ids_temp):
-                imgs = np.array(list(map(preprocess_func, seq)))
+            for i, idx in enumerate(indices):
+                seq = self.list_ids[idx]
+                imgs = map(preprocess_func, seq)
+                if self.labels[idx].loc['any'].any():
+                    func_idxs = np.random.randint(0, self.n_augment+1,
+                                                  size=len(seq))
+                    imgs = [self.augment_funcs[j](img)
+                            for j, img in zip(func_idxs, imgs)]
+                imgs = np.array(imgs)
                 imgs = np.repeat(imgs[..., np.newaxis], 3, -1)
                 diff = len(seq) - self.sequence_size
                 if diff < 0:
@@ -51,10 +70,11 @@ class LSTMDataGenerator(Sequence):
                     indices = get_sequence_clipping_order(len(seq))
                     imgs = np.delete(imgs, indices[:diff], 0)
                 x[i, ] = imgs
-                y[i, ] = self.labels.iloc[i, 1:]
+                y[i, ] = self.labels.iloc[idx, 1:]
             return x, y
         else:                       # test phase
-            for i, seq in enumerate(list_ids_temp):
+            for i, idx in enumerate(indices):
+                seq = self.list_ids[idx]
                 imgs = np.array(list(map(preprocess_func, seq)))
                 imgs = np.repeat(imgs[..., np.newaxis], 3, -1)
                 diff = len(seq) - self.sequence_size
