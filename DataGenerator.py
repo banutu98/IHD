@@ -3,6 +3,7 @@ from Preprocessor import Preprocessor
 import numpy as np
 import pandas as pd
 import random
+import os
 from utilities.defines import TRAIN_DIR
 from utilities.augmentations import blur_image, noisy, adjust_brightness
 
@@ -35,6 +36,9 @@ class DataGenerator(Sequence):
             self.weights = labels.apply(weight_func, axis=1)
             total = self.weights.sum()
             self.weights = (self.weights / total).values
+        # set random seed, hope this randomizes starting value for
+        # each worker
+        random.seed(os.urandom(8))
 
     def __len__(self):
         return len(self.indices) // self.batch_size
@@ -54,10 +58,11 @@ class DataGenerator(Sequence):
             y = np.empty((self.batch_size, self.n_classes), dtype=np.float32)
             for i, idx in enumerate(indices):
                 image = Preprocessor.preprocess(self.img_dir + self.list_ids[idx] + ".dcm")
-                if self.labels.iloc[i]['any'] == 1:
+                if self.labels.iloc[idx]['any'] == 1:
                     # TODO: random module is NOT thread-safe, must
                     # come up later with a better solution
                     image = self.augment_funcs[random.randint(0, self.n_augment)](image)
+                image = np.array(image)
                 image = np.repeat(image[..., np.newaxis], 3, -1)
                 x[i, ] = image
                 if self.n_classes == 2:
