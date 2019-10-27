@@ -3,6 +3,7 @@ from keras.utils import Sequence
 import numpy as np
 from Preprocessor import Preprocessor
 from utilities.utils import get_sequence_clipping_order
+from utilities.augmentations import blur_image, noisy, adjust_brightness
 
 
 class LSTMDataGenerator(Sequence):
@@ -21,11 +22,11 @@ class LSTMDataGenerator(Sequence):
         self.shuffle = shuffle
         # TODO: this could be generalized with the help of
         # an Augmenter class
-        self.n_augment = 3      # 3 data augmentation functions
+        self.n_augment = 3  # 3 data augmentation functions
         self.augment_funcs = [blur_image,
                               noisy,
                               adjust_brightness,
-                              lambda img: img]      # identity function
+                              lambda img: img]  # identity function
         self.on_epoch_end()
         if labels is not None:
             # Weights should be a probability distribution.
@@ -41,7 +42,7 @@ class LSTMDataGenerator(Sequence):
 
     def __getitem__(self, index):
         indices = np.random.choice(self.indices, size=self.batch_size,
-                         replace=False, p=self.weights)
+                                   replace=False, p=self.weights)
         return self.__data_generation(indices)
 
     def on_epoch_end(self):
@@ -56,7 +57,7 @@ class LSTMDataGenerator(Sequence):
                 seq = self.list_ids[idx]
                 imgs = map(preprocess_func, seq)
                 if self.labels[idx].loc['any'].any():
-                    func_idxs = np.random.randint(0, self.n_augment+1,
+                    func_idxs = np.random.randint(0, self.n_augment + 1,
                                                   size=len(seq))
                     imgs = [self.augment_funcs[j](img)
                             for j, img in zip(func_idxs, imgs)]
@@ -72,7 +73,7 @@ class LSTMDataGenerator(Sequence):
                 x[i, ] = imgs
                 y[i, ] = self.labels.iloc[idx, 1:]
             return x, y
-        else:                       # test phase
+        else:  # test phase
             for i, idx in enumerate(indices):
                 seq = self.list_ids[idx]
                 imgs = np.array(list(map(preprocess_func, seq)))

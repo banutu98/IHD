@@ -1,6 +1,6 @@
-from keras.applications import NASNetLarge, InceptionResNetV2, Xception, DenseNet201, DenseNet121, ResNet50
-from keras.layers import Dense, Dropout, BatchNormalization, LeakyReLU, Input, GlobalAveragePooling2D
+from keras.applications import NASNetLarge, InceptionResNetV2, Xception, DenseNet201, ResNet50
 from keras.layers import Bidirectional, LSTM, TimeDistributed, Masking
+from keras.layers import Dense, Dropout, BatchNormalization, LeakyReLU, Input, GlobalAveragePooling2D
 from keras.models import Sequential, Model
 
 from utilities.utils import print_error

@@ -1,11 +1,12 @@
-from keras.utils import Sequence
-from Preprocessor import Preprocessor
-import numpy as np
-import pandas as pd
-import random
 import os
-from utilities.defines import TRAIN_DIR
+import random
+
+import numpy as np
+from keras.utils import Sequence
+
+from Preprocessor import Preprocessor
 from utilities.augmentations import blur_image, noisy, adjust_brightness
+from utilities.defines import TRAIN_DIR
 
 
 class DataGenerator(Sequence):
@@ -22,11 +23,11 @@ class DataGenerator(Sequence):
         self.n_classes = n_classes
         # TODO: this could be generalized with the help of
         # an Augmenter class
-        self.n_augment = 3      # 3 data augmentation functions
+        self.n_augment = 3  # 3 data augmentation functions
         self.augment_funcs = [blur_image,
                               noisy,
                               adjust_brightness,
-                              lambda img: img]      # identity function
+                              lambda img: img]  # identity function
         self.on_epoch_end()
         if labels is not None:
             # Weights should be a probability distribution.
@@ -45,7 +46,7 @@ class DataGenerator(Sequence):
 
     def __getitem__(self, index):
         indices = np.random.choice(self.indices, size=self.batch_size,
-                         replace=False, p=self.weights)
+                                   replace=False, p=self.weights)
         return self.__data_generation(indices)
 
     # Don't think this is necessary anymore, indices are sampled randomly.
