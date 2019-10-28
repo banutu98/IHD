@@ -74,7 +74,7 @@ class StandardModel:
         return model
 
     def build_recurrent_model(self):
-        inputs = Input(shape=(3, *self.input_shape))
+        inputs = Input(shape=(40, *self.input_shape))
         time_dist = TimeDistributed(self.base_model)(inputs)
         global_pool = TimeDistributed(GlobalAveragePooling2D())(time_dist)
         dense_relu = TimeDistributed(Dense(256, activation='relu'))(global_pool)

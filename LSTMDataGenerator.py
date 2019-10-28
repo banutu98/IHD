@@ -9,7 +9,7 @@ from utilities.augmentations import blur_image, noisy, adjust_brightness
 class LSTMDataGenerator(Sequence):
 
     def __init__(self, list_ids, labels=None, batch_size=1, img_size=(512, 512, 3),
-                 sequence_size=20, img_dir='data/train', shuffle=True):
+                 sequence_size=40, img_dir='data/train', shuffle=True):
         # here, list_ids is a series of lists; each list represents an
         # ordered sequence of scans that compose a single study
         self.list_ids = list_ids
