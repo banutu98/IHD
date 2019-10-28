@@ -3,7 +3,7 @@ import copy
 import pydicom
 import scipy
 from skimage import morphology
-
+from skimage.transform import resize
 from utilities.augmentations import *
 
 
@@ -81,6 +81,8 @@ class Preprocessor:
     def preprocess(image_path):
         dicom = pydicom.read_file(image_path)
         image = dicom.pixel_array.astype(np.float64)
+        if image.shape != (512, 512):
+            image = resize(image, (512, 512))
         p = Preprocessor
         image = p.apply_hounsfield(image, dicom.RescaleIntercept, dicom.RescaleSlope)
         image = p.windowing(image)
