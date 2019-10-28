@@ -3,7 +3,7 @@ import os
 
 TRAIN_DIR = os.path.join(os.getcwd(), 'data', 'train', '')
 TEST_DIR = os.path.join(os.getcwd(), 'data', 'test', '')
-MODELS_DIR = os.path.join(os.getcwd(), 'models')
+CSV_FILENAME = "Submission.csv"
 
 
 class HemorrhageTypes(Enum):

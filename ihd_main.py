@@ -10,7 +10,7 @@ from keras.optimizers import Adamax
 from DataGenerator import DataGenerator
 from LSTMDataGenerator import LSTMDataGenerator
 from NeuralNetwork import StandardModel
-from utilities.defines import TRAIN_DIR, MODELS_DIR
+from utilities.defines import TRAIN_DIR
 from utilities.utils import print_error
 from sklearn.metrics import log_loss
 from Preprocessor import Preprocessor
@@ -62,13 +62,12 @@ def train_binary_model(base_model, already_trained_model=None):
         model = model.build_model()
         model.compile(Adamax(), loss='categorical_crossentropy', metrics=['acc'])
         model.fit_generator(DataGenerator(x_train, labels=y_train, n_classes=2))
-        model.save(os.path.join(MODELS_DIR, 'model.h5'))
+        model.save('model.h5')
         loss, accuracy = model.evaluate_generator(DataGenerator(x_test, labels=y_test, n_classes=2))
         print(loss, accuracy)
     else:
-        model_path = os.path.join(MODELS_DIR, already_trained_model)
-        if os.path.exists(model_path):
-            model = keras.models.load_model(model_path)
+        if os.path.exists(already_trained_model):
+            model = keras.models.load_model(already_trained_model)
             loss, accuracy = model.evaluate_generator(DataGenerator(x_test, labels=y_test, n_classes=2))
             print(loss, accuracy)
         else:
@@ -83,14 +82,13 @@ def train_multi_class_model(base_model, already_trained_model=None):
         model = model.build_model()
         model.compile(Adamax(), loss='categorical_crossentropy', metrics=['acc'])
         model.fit_generator(DataGenerator(x_train, labels=y_train, n_classes=5))
-        model.save(os.path.join(MODELS_DIR, 'model.h5'))
+        model.save('model.h5')
         y_pred = model.predict_generator(DataGenerator(x_test, n_classes=5))
         y_test = y_test.iloc[:, 1:]
         print(log_loss(y_test, y_pred))
     else:
-        model_path = os.path.join(MODELS_DIR, already_trained_model)
-        if os.path.exists(model_path):
-            model = keras.models.load_model(model_path)
+        if os.path.exists(already_trained_model):
+            model = keras.models.load_model(already_trained_model)
             y_pred = model.predict_generator(DataGenerator(x_test, n_classes=5))
             y_test = y_test.iloc[:, 1:]
             print(log_loss(y_test, y_pred))
@@ -106,13 +104,12 @@ def train_recurrent_multi_class_model(base_model, already_trained_model=None):
         model = model.build_model()
         model.compile(Adamax(), loss='categorical_crossentropy', metrics=['acc'])
         model.fit_generator(LSTMDataGenerator(x_train, labels=y_train))
-        model.save(os.path.join(MODELS_DIR, 'model.h5'))
+        model.save('model.h5')
         y_pred = model.predict_generator(LSTMDataGenerator(x_test))
         print(log_loss(y_test, y_pred))
     else:
-        model_path = os.path.join(MODELS_DIR, already_trained_model)
-        if os.path.exists(model_path):
-            model = keras.models.load_model(model_path)
+        if os.path.exists(already_trained_model):
+            model = keras.models.load_model(already_trained_model)
             y_pred = model.predict_generator(LSTMDataGenerator(x_test))
             print(log_loss(y_test, y_pred))
         else:
@@ -158,7 +155,7 @@ def main():
     # train_multi_class_model('densenet')
     # prepare_sequential_data()
     train_recurrent_multi_class_model('xception')
-    #test_recurrent_network()
+    # test_recurrent_network()
 
 
 if __name__ == '__main__':
