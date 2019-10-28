@@ -1,7 +1,5 @@
-from utilities.defines import HemorrhageTypes
+from utilities.defines import HemorrhageTypes, CSV_FILENAME
 import time
-
-CSV_FILENAME = "Submission.csv"
 
 
 # output_dict is dictionary where the image ids are the keys and the values are tuples of probabilities
