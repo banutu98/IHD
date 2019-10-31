@@ -57,7 +57,7 @@ class StandardModel:
         model.add(BatchNormalization())
         model.add(LeakyReLU(alpha=0.1))
         model.add(Dropout(0.3))
-        model.add(Dense(2, activation='softmax'))
+        model.add(Dense(2, activation='sigmoid'))
         return model
 
     def build_multi_class_model(self):

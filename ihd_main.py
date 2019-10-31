@@ -60,7 +60,7 @@ def train_binary_model(base_model, already_trained_model=None):
     if not already_trained_model:
         model = StandardModel(base_model, (512, 512, 3), classes=2, use_softmax=True)
         model = model.build_model()
-        model.compile(Adamax(), loss='categorical_crossentropy', metrics=['acc'])
+        model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
         model.fit_generator(DataGenerator(x_train, labels=y_train, n_classes=2))
         model.save('model.h5')
         loss, accuracy = model.evaluate_generator(DataGenerator(x_test, labels=y_test, n_classes=2))
