@@ -1,4 +1,3 @@
-
 # coding: utf-8
 
 # In[ ]:
@@ -12,6 +11,7 @@ TRAIN_DIR_STAGE_2 = os.path.join('../stage_2_train_images', '')
 TEST_DIR = os.path.join('../stage_1_test_images', '')
 TEST_DIR_STAGE_2 = os.path.join('../stage_2_test_images', '')
 CSV_FILENAME = 'submission.csv'
+
 
 class HemorrhageTypes(Enum):
     ANY = "any"
@@ -146,6 +146,7 @@ def extract_metadata(data_prefix=TRAIN_DIR_STAGE_2):
     meta_df[split_cols[3:9]] = pd.DataFrame(meta_df.ImageOrientationPatient.values.tolist())
     meta_df[split_cols[9:]] = pd.DataFrame(meta_df.PixelSpacing.values.tolist())
     meta_df = meta_df.drop(['ImagePositionPatient', 'ImageOrientationPatient', 'PixelSpacing'], axis=1)
+    meta_df.to_csv(os.path.join(data_prefix, 'test_meta_2.csv'))
     return meta_df
 
 
@@ -355,7 +356,7 @@ class DataGenerator(Sequence):
                     image = self.augment_funcs[random.randint(0, self.n_augment)](image)
                 image = np.array(image)
                 image = np.repeat(image[..., np.newaxis], 3, -1)
-                x[i, ] = image
+                x[i,] = image
                 if self.n_classes == 2:
                     y[i, ] = self.labels.iloc[idx]['any']
                 elif self.n_classes == 5:
@@ -367,7 +368,7 @@ class DataGenerator(Sequence):
             for i, idx in enumerate(indices):
                 image = Preprocessor.preprocess(self.img_dir + self.list_ids[idx] + ".dcm")
                 image = np.repeat(image[..., np.newaxis], 3, -1)
-                x[i, ] = image
+                x[i,] = image
             return x
 
 
@@ -455,8 +456,8 @@ class LSTMDataGenerator(Sequence):
                     indices = get_sequence_clipping_order(seq_len)
                     imgs = np.delete(imgs, indices[:diff], 0)
                     seq_labels = np.delete(seq_labels, indices[:diff], 0)
-                x[i, ] = imgs
-                y[i, ] = seq_labels[:, 1:]
+                x[i,] = imgs
+                y[i,] = seq_labels[:, 1:]
             return x, y
         else:  # test phase
             for i, idx in enumerate(indices):
@@ -471,7 +472,7 @@ class LSTMDataGenerator(Sequence):
                 elif diff > 0:
                     indices = get_sequence_clipping_order(seq_len)
                     imgs = np.delete(imgs, indices[:diff], 0)
-                x[i, ] = imgs
+                x[i,] = imgs
             return x
 
 
@@ -575,10 +576,12 @@ import time
 
 import keras
 import matplotlib.pyplot as plt
+import tensorflow as tf
 import keras.backend as K
 from keras.optimizers import Adamax, SGD
 from sklearn.metrics import log_loss
 from keras.callbacks import ModelCheckpoint, Callback
+
 
 class WeightsSaver(Callback):
     def __init__(self, N):
@@ -590,7 +593,8 @@ class WeightsSaver(Callback):
             name = 'model_weights.h5'
             self.model.save_weights(name)
         self.batch += 1
-        
+
+
 def prepare_data(only_positives=False):
     csv = pd.read_csv(os.path.join('data/train', 'labels_2.csv'))
     files = glob.glob(os.path.join(TRAIN_DIR_STAGE_2, "*.dcm"))
@@ -602,36 +606,47 @@ def prepare_data(only_positives=False):
     mask = indices < 0.8
     x_train, y_train = list(filtered_csv[mask].id), filtered_csv.iloc[mask, 1:]
     x_test, y_test = list(filtered_csv[~mask].id), filtered_csv.iloc[~mask, 1:]
-    #x_train.reset_index(inplace=True, drop=True)
+    # x_train.reset_index(inplace=True, drop=True)
     y_train.reset_index(inplace=True, drop=True)
-    #x_test.reset_index(inplace=True, drop=True)
+    # x_test.reset_index(inplace=True, drop=True)
     y_test.reset_index(inplace=True, drop=True)
     return x_train, y_train, x_test, y_test
 
 
-def prepare_sequential_data(only_positives=False):
-    # open label + metadata CSV
-    csv = pd.read_csv(os.path.join('data/train', "train_meta_2.csv"))
-    # sort by study ID and position
-    csv.sort_values(by=["StudyInstanceUID", "ImagePositionPatient3"], inplace=True, ascending=False)
-    label_columns = ["any", "epidural", "intraparenchymal",
-                     "intraventricular", "subarachnoid", "subdural"]
-    # filter unnecessary columns
-    csv = csv[["StudyInstanceUID", "id"] + label_columns]
-    if only_positives:
-        csv = csv.loc[csv['any'] == 1]
-    # get sequences of IDs (groupby preserves order)
-    sequences = csv.groupby("StudyInstanceUID")["id"].apply(list)
-    # group labels into one single column
-    csv["labels"] = csv[label_columns].values.tolist()
-    # get sequences of labels
-    labels = csv.groupby("StudyInstanceUID")["labels"].apply(list)
-    indices = np.random.rand(sequences.size)
-    # partition data
-    mask = indices < 0.8
-    x_train, x_test = list(sequences.iloc[mask]), list(sequences.iloc[~mask])
-    y_train, y_test = list(labels.iloc[mask]), list(labels.iloc[~mask])
-    return x_train, y_train, x_test, y_test
+def prepare_sequential_data(only_positives=False, for_prediction=False):
+    if not for_prediction:
+        # open label + metadata CSV
+        csv = pd.read_csv(os.path.join('data/train', "train_meta_2.csv"))
+        # sort by study ID and position
+        csv.sort_values(by=["StudyInstanceUID", "ImagePositionPatient3"], inplace=True, ascending=False)
+        label_columns = ["any", "epidural", "intraparenchymal",
+                         "intraventricular", "subarachnoid", "subdural"]
+        # filter unnecessary columns
+        csv = csv[["StudyInstanceUID", "id"] + label_columns]
+        if only_positives:
+            csv = csv.loc[csv['any'] == 1]
+        # get sequences of IDs (groupby preserves order)
+        sequences = csv.groupby("StudyInstanceUID")["id"].apply(list)
+        # group labels into one single column
+        csv["labels"] = csv[label_columns].values.tolist()
+        # get sequences of labels
+        labels = csv.groupby("StudyInstanceUID")["labels"].apply(list)
+        indices = np.random.rand(sequences.size)
+        # partition data
+        mask = indices < 0.8
+        x_train, x_test = list(sequences.iloc[mask]), list(sequences.iloc[~mask])
+        y_train, y_test = list(labels.iloc[mask]), list(labels.iloc[~mask])
+        return x_train, y_train, x_test, y_test
+    else:
+        csv = pd.read_csv(os.path.join('data/train', "test_meta_2.csv"))
+        # sort by study ID and position
+        csv.sort_values(by=["StudyInstanceUID", "ImagePositionPatient3"], inplace=True, ascending=False)
+        # filter unnecessary columns
+        csv = csv[["StudyInstanceUID", "id"]]
+        # get sequences of IDs (groupby preserves order)
+        sequences = csv.groupby("StudyInstanceUID")["id"].apply(list)
+        x_test = list(sequences)
+        return x_test
 
 
 def test_recurrent_network():
@@ -651,7 +666,8 @@ def test_recurrent_network():
     model.summary()
     x_train = []
     y_train = []
-    data = [['ID_00025ef4b.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027cbb1.dcm']]
+    data = [['ID_00025ef4b.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm',
+             'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027cbb1.dcm']]
     for i in range(1):
         instance_images, instance_labels = generate_single_instance(data[i])
         x_train.append(instance_images)
@@ -671,14 +687,14 @@ def plot_model_graph(history, graph_name):
     plt.xlabel('Epoch')
     plt.savefig(graph_name)
 
-    
+
 def weighted_log_loss(y_true, y_pred):
     class_weights = np.array([2., 1., 1., 1., 1., 1.])
     eps = K.epsilon()
     y_pred = K.clip(y_pred, eps, 1.0 - eps)
     out = -(y_true * K.log(y_pred) * class_weights +
             (1.0 - y_true) * K.log(1.0 - y_pred) * class_weights)
-    return K.mean(out, axis=-1)    
+    return K.mean(out, axis=-1)
 
 
 def train_binary_model(base_model, model_name, already_trained_model=None):
@@ -711,18 +727,18 @@ def train_multi_class_model(base_model, model_name, already_trained_model=None, 
         model = model.build_model()
         model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
         checkpoint = ModelCheckpoint(model_name, monitor='accuracy', verbose=1, save_best_only=True, mode='max')
-        history = model.fit_generator(DataGenerator(x_train, labels=y_train, 
+        history = model.fit_generator(DataGenerator(x_train, labels=y_train,
                                                     n_classes=n_classes, batch_size=8),
-                                      epochs=1)
+                                                    epochs=1)
         model.save(model_name)
     else:
         if os.path.exists(already_trained_model):
             model = keras.models.load_model(already_trained_model)
             model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
             checkpoint = ModelCheckpoint(model_name, monitor='accuracy', verbose=1, save_best_only=True, mode='max')
-            history = model.fit_generator(DataGenerator(x_train, labels=y_train, 
+            history = model.fit_generator(DataGenerator(x_train, labels=y_train,
                                                         n_classes=n_classes, batch_size=8),
-                                          epochs=1)
+                                                        epochs=1)
             model.save(model_name)
         else:
             print_error("Provided model file doesn't exist! Exiting...")
@@ -730,12 +746,12 @@ def train_multi_class_model(base_model, model_name, already_trained_model=None, 
 
 
 def train_recurrent_multi_class_model(base_model, model_name, already_trained_model=None):
-    x_train, y_train, x_test, y_test = prepare_sequential_data(only_positives=True)
+    x_train, y_train, x_test, y_test = prepare_sequential_data()
     if not already_trained_model:
         model = StandardModel(base_model, (512, 512, 3), classes=5, use_softmax=False, pooling_method=None)
         model = model.build_model()
         model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
-        model.fit_generator(LSTMDataGenerator(x_train, labels=y_train))
+        model.fit_generator(LSTMDataGenerator(x_train, labels=y_train), epochs=3)
         model.save(model_name)
     else:
         if os.path.exists(already_trained_model):
@@ -776,16 +792,43 @@ def predict(binary_model, multi_class_model, conditional_probabilities=True):
         any_prediction = binary_prediction[0][0]
         classes_predictions = loaded_multi_class_model.predict(preprocessed_image)[0]
         if conditional_probabilities:
-            classes_predictions = classes_predictions * any_prediction 
+            classes_predictions = classes_predictions * any_prediction
             output_dict[file_id] = tuple(np.concatenate((np.array([any_prediction]),
-                                     classes_predictions), axis=None))
+                                                         classes_predictions), axis=None))
         else:
             if any_prediction >= 0.5:
                 output_dict[file_id] = tuple(np.concatenate((np.array([1]),
-                                             classes_predictions), axis=None))
+                                                             classes_predictions), axis=None))
             else:
                 output_dict[file_id] = tuple(0, 0, 0, 0, 0, 0)
         index += 1
+        if index % 1000 == 0:
+            print(index)
+    create_output_csv(output_dict)
+
+
+def recurrent_predict(binary_model, recurrent_model):
+    loaded_binary_model = keras.models.load_model(binary_model)
+    loaded_recurrent_model = keras.models.load_model(recurrent_model)
+    x_test = prepare_sequential_data(for_prediction=True)
+
+    output_dict = dict()
+    index = 1
+    for sequence in x_test:
+        preprocessed_images = list()
+        for image in sequence:
+            preprocessed_image = Preprocessor.preprocess(os.path.join(TEST_DIR_STAGE_2, image))
+            preprocessed_image = np.repeat(preprocessed_image[..., np.newaxis], 3, -1)
+            preprocessed_images.append(preprocessed_image)
+        preprocessed_images = np.array(preprocessed_images)
+        binary_predictions = loaded_binary_model.predict(preprocessed_images)
+        classes_predictions = loaded_recurrent_model.predict(preprocessed_images)[0]
+        for i in range(len(sequence)):
+            any_prediction = binary_predictions[i][0]
+            current_classes_predictions = classes_predictions * any_prediction
+            output_dict[sequence[i]] = tuple(
+                np.concatenate((np.array([any_prediction]), current_classes_predictions), axis=None))
+            index += 1
         if index % 1000 == 0:
             print(index)
     create_output_csv(output_dict)
@@ -800,6 +843,8 @@ def main():
     # test_recurrent_network()
     train_recurrent_multi_class_model('xception', 'recurrent_model')
     # extract_csv_partition()
+    # extract_metadata(data_prefix=TEST_DIR_STAGE_2)
+
 
 main()
 
