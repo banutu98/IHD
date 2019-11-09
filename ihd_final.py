@@ -556,8 +556,7 @@ class StandardModel:
         dense_relu = TimeDistributed(Dense(256, activation='relu'))(global_pool)
 
         masked = Masking(0.0)(dense_relu)
-        out = Bidirectional(LSTM(64, return_sequences=True, activation='softsign',
-                                 dropout=0.2, recurrent_dropout=0.2))(masked)
+        out = Bidirectional(LSTM(64, return_sequences=True, activation='softsign'))(masked)
         out = TimeDistributed(Dense(5, activation='sigmoid'))(out)
 
         model = Model(inputs=inputs, outputs=out)
