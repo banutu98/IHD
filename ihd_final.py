@@ -91,20 +91,20 @@ def print_error(message):
     print(c_red + message + c_end)
 
 
-def get_csv_train(data_prefix=TRAIN_DIR):
-    train_df = pd.read_csv(os.path.join(data_prefix, 'stage_1_train.csv'))
+def get_csv_train(data_prefix=TRAIN_DIR_STAGE_2):
+    train_df = pd.read_csv(os.path.join(data_prefix, 'stage_2_train.csv'))
     train_df[['ID', 'subtype']] = train_df['ID'].str.rsplit('_', 1,
                                                             expand=True)
     train_df = train_df.rename(columns={'ID': 'id', 'Label': 'label'})
     train_df = pd.pivot_table(train_df, index='id',
                               columns='subtype', values='label')
-    # train_df.to_csv("labels.csv")
+    train_df.to_csv("labels_2.csv")
     return train_df
 
 
 def extract_csv_partition():
     df = get_csv_train()
-    meta_data_train = combine_labels_metadata(TRAIN_DIR)
+    meta_data_train = combine_labels_metadata(TRAIN_DIR_STAGE_2)
     negative, positive = df.loc[df['any'] == 0], df.loc[df['any'] == 1]
     negative_study_uids = list(meta_data_train.query("any == 0")['StudyInstanceUID'])
     indices = np.arange(min(len(negative_study_uids), len(positive.index)))
@@ -118,7 +118,7 @@ def extract_csv_partition():
     return pd.concat([positive, negative])
 
 
-def extract_metadata(data_prefix=TRAIN_DIR):
+def extract_metadata(data_prefix=TRAIN_DIR_STAGE_2):
     filenames = glob.glob(os.path.join(data_prefix, "*.dcm"))
     get_id = lambda p: os.path.splitext(os.path.basename(p))[0]
     ids = map(get_id, filenames)
@@ -149,12 +149,12 @@ def extract_metadata(data_prefix=TRAIN_DIR):
     return meta_df
 
 
-def combine_labels_metadata(data_prefix=TRAIN_DIR):
+def combine_labels_metadata(data_prefix=TRAIN_DIR_STAGE_2):
     meta_df = extract_metadata(data_prefix)
     df = get_csv_train(data_prefix)
     df = df.merge(meta_df, how='left', on='id').dropna()
     df.sort_values(by='ImagePositionPatient3', inplace=True, ascending=False)
-    df.to_csv(os.path.join(data_prefix, 'train_meta.csv'))
+    df.to_csv(os.path.join(data_prefix, 'train_meta_2.csv'))
     return df
 
 
@@ -301,7 +301,7 @@ from keras.utils import Sequence
 class DataGenerator(Sequence):
 
     def __init__(self, list_ids, labels=None, batch_size=1, img_size=(512, 512, 3),
-                 img_dir=TRAIN_DIR, shuffle=True, n_classes=2):
+                 img_dir=TRAIN_DIR_STAGE_2, shuffle=True, n_classes=2):
         self.list_ids = list_ids
         self.indices = np.arange(len(self.list_ids))
         self.labels = labels
@@ -379,7 +379,7 @@ from keras.utils import Sequence
 class LSTMDataGenerator(Sequence):
 
     def __init__(self, list_ids, labels=None, batch_size=1, img_size=(512, 512, 3),
-                 sequence_size=40, img_dir=TRAIN_DIR, shuffle=True):
+                 sequence_size=10, img_dir=TRAIN_DIR_STAGE_2, shuffle=True):
         # here, list_ids is a series of lists; each list represents an
         # ordered sequence of scans that compose a single study
         self.list_ids = list_ids
@@ -447,7 +447,8 @@ class LSTMDataGenerator(Sequence):
                 if diff < 0:
                     padding = np.repeat(np.zeros(imgs.shape[1:])[np.newaxis, ...], abs(diff), 0)
                     imgs = np.concatenate((imgs, padding), axis=0)
-                    seq_labels = np.concatenate(seq_labels, np.zeros(6), axis=0)
+                    seq_padding = np.repeat(np.zeros(6)[np.newaxis, ...], abs(diff), 0)
+                    seq_labels = np.concatenate((seq_labels, seq_padding), axis=0)
                 elif diff > 0:
                     indices = get_sequence_clipping_order(seq_len)
                     imgs = np.delete(imgs, indices[:diff], 0)
@@ -549,15 +550,14 @@ class StandardModel:
         return model
 
     def build_recurrent_model(self):
-        inputs = Input(shape=(40, *self.input_shape))
+        inputs = Input(shape=(10, *self.input_shape))
         time_dist = TimeDistributed(self.base_model)(inputs)
         global_pool = TimeDistributed(GlobalAveragePooling2D())(time_dist)
         dense_relu = TimeDistributed(Dense(256, activation='relu'))(global_pool)
 
         masked = Masking(0.0)(dense_relu)
-        out = Bidirectional(LSTM(256, return_sequences=True, activation='softsign',
-                                 dropout=0.2, recurrent_dropout=0.2))(masked)
-        out = TimeDistributed(Dense(5, activation='softmax'))(out)
+        out = Bidirectional(LSTM(64, return_sequences=True, activation='softsign'))(masked)
+        out = TimeDistributed(Dense(5, activation='sigmoid'))(out)
 
         model = Model(inputs=inputs, outputs=out)
         return model
@@ -590,8 +590,8 @@ class WeightsSaver(Callback):
         self.batch += 1
         
 def prepare_data(only_positives=False):
-    csv = pd.read_csv(os.path.join('data/train', 'labels.csv'))
-    files = glob.glob(os.path.join(TRAIN_DIR, "*.dcm"))
+    csv = pd.read_csv(os.path.join('data/train', 'labels_2.csv'))
+    files = glob.glob(os.path.join(TRAIN_DIR_STAGE_2, "*.dcm"))
     files = list(map(lambda x: os.path.splitext(os.path.basename(x))[0], files))
     filtered_csv = csv[csv.id.isin(files)]
     if only_positives:
@@ -609,7 +609,7 @@ def prepare_data(only_positives=False):
 
 def prepare_sequential_data(only_positives=False):
     # open label + metadata CSV
-    csv = pd.read_csv(os.path.join('data/train', "train_meta.csv"))
+    csv = pd.read_csv(os.path.join('data/train', "train_meta_2.csv"))
     # sort by study ID and position
     csv.sort_values(by=["StudyInstanceUID", "ImagePositionPatient3"], inplace=True, ascending=False)
     label_columns = ["any", "epidural", "intraparenchymal",
@@ -647,13 +647,10 @@ def test_recurrent_network():
     model = model.build_model()
     model.compile(Adamax(), loss='categorical_crossentropy', metrics=['acc'])
     model.summary()
-    keras.utils.plot_model(model, show_shapes=True)
     x_train = []
     y_train = []
-    data = [['ID_00025ef4b.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm'],
-            ['ID_000229f2a.dcm', 'ID_000230ed7.dcm', 'ID_000270f8b.dcm'],
-            ['ID_00025ef4b.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm']]
-    for i in range(3):
+    data = [['ID_00025ef4b.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027cbb1.dcm']]
+    for i in range(1):
         instance_images, instance_labels = generate_single_instance(data[i])
         x_train.append(instance_images)
         y_train.append(instance_labels)
@@ -692,13 +689,14 @@ def train_binary_model(base_model, model_name, already_trained_model=None):
         history = model.fit_generator(DataGenerator(x_train, labels=y_train,
                                                     n_classes=2, batch_size=8), epochs=1)
         model.save(model_name)
-        loss, accuracy = model.evaluate_generator(DataGenerator(x_test, labels=y_test, n_classes=2))
-        print(loss, accuracy)
     else:
         if os.path.exists(already_trained_model):
             model = keras.models.load_model(already_trained_model)
-            loss, accuracy = model.evaluate_generator(DataGenerator(x_test, labels=y_test, n_classes=2))
-            print(loss, accuracy)
+            model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
+            checkpoint = ModelCheckpoint(model_name, monitor='accuracy', verbose=1, save_best_only=True, mode='max')
+            history = model.fit_generator(DataGenerator(x_train, labels=y_train,
+                                                        n_classes=2, batch_size=8), epochs=1)
+            model.save(model_name)
         else:
             print_error("Provided model file doesn't exist! Exiting...")
             sys.exit(1)
@@ -714,15 +712,14 @@ def train_multi_class_model(base_model, model_name, already_trained_model=None):
         history = model.fit_generator(DataGenerator(x_train, labels=y_train, 
                                                     n_classes=5, batch_size=8), epochs=1)
         model.save(model_name)
-#         y_pred = model.predict_generator(DataGenerator(x_test, n_classes=5))
-#         y_test = y_test.iloc[:, 1:]
-#         print(log_loss(y_test, y_pred))
     else:
         if os.path.exists(already_trained_model):
             model = keras.models.load_model(already_trained_model)
-            y_pred = model.predict_generator(DataGenerator(x_test, n_classes=5))
-            y_test = y_test.iloc[:, 1:]
-            print(log_loss(y_test, y_pred))
+            model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
+            checkpoint = ModelCheckpoint(model_name, monitor='accuracy', verbose=1, save_best_only=True, mode='max')
+            history = model.fit_generator(DataGenerator(x_train, labels=y_train, 
+                                                        n_classes=5, batch_size=8), epochs=1)
+            model.save(model_name)
         else:
             print_error("Provided model file doesn't exist! Exiting...")
             sys.exit(1)
@@ -736,13 +733,9 @@ def train_recurrent_multi_class_model(base_model, model_name, already_trained_mo
         model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
         model.fit_generator(LSTMDataGenerator(x_train, labels=y_train))
         model.save(model_name)
-        y_pred = model.predict_generator(LSTMDataGenerator(x_test))
-        print(log_loss(y_test, y_pred))
     else:
         if os.path.exists(already_trained_model):
             model = keras.models.load_model(already_trained_model)
-            y_pred = model.predict_generator(LSTMDataGenerator(x_test))
-            print(log_loss(y_test, y_pred))
         else:
             print_error("Provided model file doesn't exist! Exiting...")
             sys.exit(1)
@@ -754,7 +747,7 @@ def predict(binary_model, multi_class_model, conditional_probabilities=True):
 
     output_dict = dict()
     index = 1
-    for filename in os.scandir(TEST_DIR):
+    for filename in os.scandir(TEST_DIR_STAGE_2):
         preprocessed_image = Preprocessor.preprocess(filename.path)
         preprocessed_image = np.repeat(preprocessed_image[..., np.newaxis], 3, -1)
         preprocessed_image = np.expand_dims(preprocessed_image, axis=0)
@@ -780,12 +773,13 @@ def predict(binary_model, multi_class_model, conditional_probabilities=True):
 
 def main():
     # TODO: Possible MODELS for training: inception, xception, resnet, densenet, nas
-    # train_binary_model('xception')
-    # predict('binary_model.h5', 'categorical_model_v3_full.h5')
+    # train_binary_model('xception', 'binary_model_improved.h5', 'binary_model.h5')
+    # predict('binary_model_improved.h5', 'categorical_model_v3_full_improved.h5')
     # prepare_sequential_data()
-    train_multi_class_model('xception', 'categorical_model_v3_full.h5')
+    # train_multi_class_model('xception', 'categorical_model_v3_full_improved.h5', 'categorical_model_v3_full.h5')
     # test_recurrent_network()
-    # train_recurrent_multi_class_model('xception')
+    train_recurrent_multi_class_model('xception', 'recurrent_model')
+    # extract_csv_partition()
 
 main()
 
