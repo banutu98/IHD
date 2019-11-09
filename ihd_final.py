@@ -358,8 +358,10 @@ class DataGenerator(Sequence):
                 x[i, ] = image
                 if self.n_classes == 2:
                     y[i, ] = self.labels.iloc[idx]['any']
-                else:
+                elif self.n_classes == 5:
                     y[i, ] = self.labels.iloc[idx, 1:]
+                else:
+                    y[i, ] = self.labels.iloc[idx]
             return x, y
         else:  # test phase
             for i, idx in enumerate(indices):
@@ -546,7 +548,7 @@ class StandardModel:
         model.add(BatchNormalization())
         # model.add(LeakyReLU(alpha=0.1))
         # model.add(Dropout(0.3))
-        model.add(Dense(5, activation='sigmoid'))
+        model.add(Dense(self.classes, activation='sigmoid'))
         return model
 
     def build_recurrent_model(self):
@@ -702,15 +704,16 @@ def train_binary_model(base_model, model_name, already_trained_model=None):
             sys.exit(1)
 
 
-def train_multi_class_model(base_model, model_name, already_trained_model=None):
+def train_multi_class_model(base_model, model_name, already_trained_model=None, n_classes=5):
     x_train, y_train, x_test, y_test = prepare_data()
     if not already_trained_model:
-        model = StandardModel(base_model, (512, 512, 3), classes=5, use_softmax=True)
+        model = StandardModel(base_model, (512, 512, 3), classes=n_classes, use_softmax=True)
         model = model.build_model()
         model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
         checkpoint = ModelCheckpoint(model_name, monitor='accuracy', verbose=1, save_best_only=True, mode='max')
         history = model.fit_generator(DataGenerator(x_train, labels=y_train, 
-                                                    n_classes=5, batch_size=8), epochs=1)
+                                                    n_classes=n_classes, batch_size=8),
+                                      epochs=1)
         model.save(model_name)
     else:
         if os.path.exists(already_trained_model):
@@ -718,7 +721,8 @@ def train_multi_class_model(base_model, model_name, already_trained_model=None):
             model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
             checkpoint = ModelCheckpoint(model_name, monitor='accuracy', verbose=1, save_best_only=True, mode='max')
             history = model.fit_generator(DataGenerator(x_train, labels=y_train, 
-                                                        n_classes=5, batch_size=8), epochs=1)
+                                                        n_classes=n_classes, batch_size=8),
+                                          epochs=1)
             model.save(model_name)
         else:
             print_error("Provided model file doesn't exist! Exiting...")
@@ -739,6 +743,22 @@ def train_recurrent_multi_class_model(base_model, model_name, already_trained_mo
         else:
             print_error("Provided model file doesn't exist! Exiting...")
             sys.exit(1)
+
+def predict_multiclass_all(multi_class_model, conditional_probabilities=True):
+    loaded_multi_class_model = keras.models.load_model(multi_class_model)
+    output_dict = dict()
+    index = 1
+    for filename in os.scandir(TEST_DIR_STAGE_2):
+        preprocessed_image = Preprocessor.preprocess(filename.path)
+        preprocessed_image = np.repeat(preprocessed_image[..., np.newaxis], 3, -1)
+        preprocessed_image = np.expand_dims(preprocessed_image, axis=0)
+        classes_predictions = loaded_multi_class_model.predict(preprocessed_image)[0]
+        file_id = os.path.splitext(filename.name)[0]
+        output_dict[file_id] = tuple(classes_predictions)
+        index += 1
+        if index % 1000 == 0:
+            print(index)
+    create_output_csv(output_dict)
 
 
 def predict(binary_model, multi_class_model, conditional_probabilities=True):
