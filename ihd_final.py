@@ -603,7 +603,7 @@ def prepare_data(only_positives=False):
     if only_positives:
         filtered_csv = filtered_csv.loc[filtered_csv['any'] == 1]
     indices = np.random.rand(len(filtered_csv))
-    mask = indices < 0.8
+    mask = indices < 0.9
     x_train, y_train = list(filtered_csv[mask].id), filtered_csv.iloc[mask, 1:]
     x_test, y_test = list(filtered_csv[~mask].id), filtered_csv.iloc[~mask, 1:]
     # x_train.reset_index(inplace=True, drop=True)
@@ -633,7 +633,7 @@ def prepare_sequential_data(only_positives=False, for_prediction=False):
         labels = csv.groupby("StudyInstanceUID")["labels"].apply(list)
         indices = np.random.rand(sequences.size)
         # partition data
-        mask = indices < 0.8
+        mask = indices < 0.9
         x_train, x_test = list(sequences.iloc[mask]), list(sequences.iloc[~mask])
         y_train, y_test = list(labels.iloc[mask]), list(labels.iloc[~mask])
         return x_train, y_train, x_test, y_test
@@ -825,7 +825,7 @@ def recurrent_predict(binary_model, recurrent_model):
         classes_predictions = loaded_recurrent_model.predict(preprocessed_images)[0]
         for i in range(len(sequence)):
             any_prediction = binary_predictions[i][0]
-            current_classes_predictions = classes_predictions * any_prediction
+            current_classes_predictions = classes_predictions[i] * any_prediction
             output_dict[sequence[i]] = tuple(
                 np.concatenate((np.array([any_prediction]), current_classes_predictions), axis=None))
             index += 1
@@ -840,8 +840,10 @@ def main():
     # predict('binary_model_improved.h5', 'categorical_model_v3_full_improved.h5')
     # prepare_sequential_data()
     # train_multi_class_model('xception', 'categorical_model_v3_full_improved.h5', 'categorical_model_v3_full.h5')
+    train_multi_class_model('xception', 'categorical_model_six_full_improved.h5', 'categorical_model_six_full.h5', n_classes=6)
+    predict_multiclass_all('categorical_model_six_full_improved.h5')
     # test_recurrent_network()
-    train_recurrent_multi_class_model('xception', 'recurrent_model')
+    # train_recurrent_multi_class_model('xception', 'recurrent_model.h5')
     # extract_csv_partition()
     # extract_metadata(data_prefix=TEST_DIR_STAGE_2)
 
