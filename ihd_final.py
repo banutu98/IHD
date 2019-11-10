@@ -487,7 +487,7 @@ from keras.models import Sequential, Model
 
 class StandardModel:
 
-    def __init__(self, network, input_shape, pooling_method='max', classes=2, use_softmax=True):
+    def __init__(self, network='xception', input_shape=(512, 512, 3), pooling_method='max', classes=2, use_softmax=True):
         self.base_model = self.get_base_model(network, input_shape, pooling_method)
         self.classes = classes
         self.use_softmax = use_softmax
@@ -547,8 +547,6 @@ class StandardModel:
         model.add(self.base_model)
         model.add(Dense(96, activation='relu'))
         model.add(BatchNormalization())
-        # model.add(LeakyReLU(alpha=0.1))
-        # model.add(Dropout(0.3))
         model.add(Dense(self.classes, activation='sigmoid'))
         return model
 
@@ -562,6 +560,13 @@ class StandardModel:
         out = Bidirectional(LSTM(64, return_sequences=True, activation='softsign'))(masked)
         out = TimeDistributed(Dense(5, activation='sigmoid'))(out)
 
+        model = Model(inputs=inputs, outputs=out)
+        return model
+
+    def build_simple_recurrent_model(self):
+        inputs = Input(shape=(None, self.classes))
+        lstm = Bidirectional(LSTM(64, activation='softsign', return_sequences=True))(inputs)
+        out = TimeDistributed(Dense(self.classes, activation='sigmoid'))(lstm)
         model = Model(inputs=inputs, outputs=out)
         return model
 
@@ -631,12 +636,9 @@ def prepare_sequential_data(only_positives=False, for_prediction=False):
         csv["labels"] = csv[label_columns].values.tolist()
         # get sequences of labels
         labels = csv.groupby("StudyInstanceUID")["labels"].apply(list)
-        indices = np.random.rand(sequences.size)
-        # partition data
-        mask = indices < 0.9
-        x_train, x_test = list(sequences.iloc[mask]), list(sequences.iloc[~mask])
-        y_train, y_test = list(labels.iloc[mask]), list(labels.iloc[~mask])
-        return x_train, y_train, x_test, y_test
+        x_train = list(sequences)
+        y_train = list(labels)
+        return x_train, y_train
     else:
         csv = pd.read_csv(os.path.join('data/train', "test_meta_2.csv"))
         # sort by study ID and position
@@ -703,17 +705,13 @@ def train_binary_model(base_model, model_name, already_trained_model=None):
         model = StandardModel(base_model, (512, 512, 3), classes=2, use_softmax=True)
         model = model.build_model()
         model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
-        checkpoint = ModelCheckpoint(model_name, monitor='accuracy', verbose=1, save_best_only=True, mode='max')
-        history = model.fit_generator(DataGenerator(x_train, labels=y_train,
-                                                    n_classes=2, batch_size=8), epochs=1)
+        model.fit_generator(DataGenerator(x_train, labels=y_train, n_classes=2, batch_size=8), epochs=1)
         model.save(model_name)
     else:
         if os.path.exists(already_trained_model):
             model = keras.models.load_model(already_trained_model)
             model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
-            checkpoint = ModelCheckpoint(model_name, monitor='accuracy', verbose=1, save_best_only=True, mode='max')
-            history = model.fit_generator(DataGenerator(x_train, labels=y_train,
-                                                        n_classes=2, batch_size=8), epochs=1)
+            model.fit_generator(DataGenerator(x_train, labels=y_train, n_classes=2, batch_size=8), epochs=1)
             model.save(model_name)
         else:
             print_error("Provided model file doesn't exist! Exiting...")
@@ -726,19 +724,13 @@ def train_multi_class_model(base_model, model_name, already_trained_model=None, 
         model = StandardModel(base_model, (512, 512, 3), classes=n_classes, use_softmax=True)
         model = model.build_model()
         model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
-        checkpoint = ModelCheckpoint(model_name, monitor='accuracy', verbose=1, save_best_only=True, mode='max')
-        history = model.fit_generator(DataGenerator(x_train, labels=y_train,
-                                                    n_classes=n_classes, batch_size=8),
-                                                    epochs=1)
+        model.fit_generator(DataGenerator(x_train, labels=y_train, n_classes=n_classes, batch_size=8), epochs=1)
         model.save(model_name)
     else:
         if os.path.exists(already_trained_model):
             model = keras.models.load_model(already_trained_model)
             model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
-            checkpoint = ModelCheckpoint(model_name, monitor='accuracy', verbose=1, save_best_only=True, mode='max')
-            history = model.fit_generator(DataGenerator(x_train, labels=y_train,
-                                                        n_classes=n_classes, batch_size=8),
-                                                        epochs=1)
+            model.fit_generator(DataGenerator(x_train, labels=y_train, n_classes=n_classes, batch_size=8), epochs=1)
             model.save(model_name)
         else:
             print_error("Provided model file doesn't exist! Exiting...")
@@ -746,7 +738,7 @@ def train_multi_class_model(base_model, model_name, already_trained_model=None, 
 
 
 def train_recurrent_multi_class_model(base_model, model_name, already_trained_model=None):
-    x_train, y_train, x_test, y_test = prepare_sequential_data()
+    x_train, y_train = prepare_sequential_data()
     if not already_trained_model:
         model = StandardModel(base_model, (512, 512, 3), classes=5, use_softmax=False, pooling_method=None)
         model = model.build_model()
@@ -756,11 +748,48 @@ def train_recurrent_multi_class_model(base_model, model_name, already_trained_mo
     else:
         if os.path.exists(already_trained_model):
             model = keras.models.load_model(already_trained_model)
+            model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
+            model.fit_generator(LSTMDataGenerator(x_train, labels=y_train), epochs=3)
+            model.save(model_name)
         else:
             print_error("Provided model file doesn't exist! Exiting...")
             sys.exit(1)
 
-def predict_multiclass_all(multi_class_model, conditional_probabilities=True):
+
+def construct_probabilities_sequences(x_train, loaded_multi_class_model):
+    def preprocess_func(im):
+        return Preprocessor.preprocess(os.path.join(TRAIN_DIR_STAGE_2, im + ".dcm"))
+    new_x_train = list()
+    for seq in x_train:
+        preprocessed_seq = np.array(list(map(preprocess_func, seq)))
+        preprocessed_seq = np.repeat(preprocessed_seq[..., np.newaxis], 3, -1)
+        predictions = loaded_multi_class_model.predict(preprocessed_seq)
+        new_x_train.append(predictions)
+    return new_x_train
+
+
+def train_simple_recurrent_model(multi_class_model, model_name, already_trained_model=None):
+    x_train, y_train = prepare_sequential_data()
+    loaded_multi_class_model = keras.models.load_model(multi_class_model)
+    x_train = construct_probabilities_sequences(x_train, loaded_multi_class_model)
+    if not already_trained_model:
+        model = StandardModel(classes=6)
+        model = model.build_simple_recurrent_model()
+        model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
+        model.fit(x_train, y_train, epochs=3, batch_size=1)
+        model.save(model_name)
+    else:
+        if os.path.exists(already_trained_model):
+            model = keras.models.load_model(already_trained_model)
+            model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
+            model.fit(x_train, y_train, epochs=3, batch_size=1)
+            model.save(model_name)
+        else:
+            print_error("Provided model file doesn't exist! Exiting...")
+            sys.exit(1)
+
+
+def predict_multiclass_all(multi_class_model):
     loaded_multi_class_model = keras.models.load_model(multi_class_model)
     output_dict = dict()
     index = 1
@@ -807,8 +836,7 @@ def predict(binary_model, multi_class_model, conditional_probabilities=True):
     create_output_csv(output_dict)
 
 
-def recurrent_predict(binary_model, recurrent_model):
-    loaded_binary_model = keras.models.load_model(binary_model)
+def recurrent_predict(recurrent_model):
     loaded_recurrent_model = keras.models.load_model(recurrent_model)
     x_test = prepare_sequential_data(for_prediction=True)
 
@@ -817,17 +845,14 @@ def recurrent_predict(binary_model, recurrent_model):
     for sequence in x_test:
         preprocessed_images = list()
         for image in sequence:
-            preprocessed_image = Preprocessor.preprocess(os.path.join(TEST_DIR_STAGE_2, image))
+            preprocessed_image = Preprocessor.preprocess(os.path.join(TEST_DIR_STAGE_2, image + '.dcm'))
             preprocessed_image = np.repeat(preprocessed_image[..., np.newaxis], 3, -1)
             preprocessed_images.append(preprocessed_image)
         preprocessed_images = np.array(preprocessed_images)
-        binary_predictions = loaded_binary_model.predict(preprocessed_images)
         classes_predictions = loaded_recurrent_model.predict(preprocessed_images)[0]
         for i in range(len(sequence)):
-            any_prediction = binary_predictions[i][0]
-            current_classes_predictions = classes_predictions[i] * any_prediction
-            output_dict[sequence[i]] = tuple(
-                np.concatenate((np.array([any_prediction]), current_classes_predictions), axis=None))
+            current_classes_predictions = classes_predictions[i]
+            output_dict[sequence[i]] = tuple(current_classes_predictions)
             index += 1
         if index % 1000 == 0:
             print(index)
