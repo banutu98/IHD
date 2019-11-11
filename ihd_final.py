@@ -566,8 +566,8 @@ class StandardModel:
     def build_simple_recurrent_model(self):
         inputs = Input(shape=(None, self.classes))
         lstm = Bidirectional(LSTM(64, activation='softsign', return_sequences=True))(inputs)
-        out = TimeDistributed(Dense(self.classes, activation='sigmoid'))(lstm)
-        model = Model(inputs=inputs, outputs=out)
+        outputs = TimeDistributed(Dense(self.classes, activation='sigmoid'))(lstm)
+        model = Model(inputs=inputs, outputs=outputs)
         return model
 
 
@@ -636,8 +636,13 @@ def prepare_sequential_data(only_positives=False, for_prediction=False):
         csv["labels"] = csv[label_columns].values.tolist()
         # get sequences of labels
         labels = csv.groupby("StudyInstanceUID")["labels"].apply(list)
-        x_train = list(sequences)
-        y_train = list(labels)
+        indices = np.random.rand(sequences.size)
+        # partition data
+        mask = indices < 0.001
+        x_train = list(sequences.iloc[mask])
+        y_train = list(labels.iloc[mask])
+#         x_train = list(sequences)
+#         y_train = list(labels)
         return x_train, y_train
     else:
         csv = pd.read_csv(os.path.join('data/train', "test_meta_2.csv"))
@@ -760,11 +765,17 @@ def construct_probabilities_sequences(x_train, loaded_multi_class_model):
     def preprocess_func(im):
         return Preprocessor.preprocess(os.path.join(TRAIN_DIR_STAGE_2, im + ".dcm"))
     new_x_train = list()
+    print(len(x_train))
+    count = 1
     for seq in x_train:
+        print(count)
         preprocessed_seq = np.array(list(map(preprocess_func, seq)))
-        preprocessed_seq = np.repeat(preprocessed_seq[..., np.newaxis], 3, -1)
+        preprocessed_seq = np.array([np.repeat(p[..., np.newaxis], 3, -1) for p in preprocessed_seq])
         predictions = loaded_multi_class_model.predict(preprocessed_seq)
+        predictions = predictions.reshape(1, *predictions.shape)
         new_x_train.append(predictions)
+        count += 1
+    new_x_train = np.concatenate(new_x_train, axis=None)
     return new_x_train
 
 
@@ -772,17 +783,20 @@ def train_simple_recurrent_model(multi_class_model, model_name, already_trained_
     x_train, y_train = prepare_sequential_data()
     loaded_multi_class_model = keras.models.load_model(multi_class_model)
     x_train = construct_probabilities_sequences(x_train, loaded_multi_class_model)
+    y_train = np.concatenate(y_train, axis=None)
+    # y_train = y_train.reshape(1, *y_train.shape)
+    print(x_train.shape, y_train.shape)
     if not already_trained_model:
         model = StandardModel(classes=6)
         model = model.build_simple_recurrent_model()
         model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
-        model.fit(x_train, y_train, epochs=3, batch_size=1)
+        model.fit(x_train, y_train, epochs=1, batch_size=1)
         model.save(model_name)
     else:
         if os.path.exists(already_trained_model):
             model = keras.models.load_model(already_trained_model)
             model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
-            model.fit(x_train, y_train, epochs=3, batch_size=1)
+            model.fit(x_train, y_train, epochs=1, batch_size=1)
             model.save(model_name)
         else:
             print_error("Provided model file doesn't exist! Exiting...")
@@ -865,13 +879,13 @@ def main():
     # predict('binary_model_improved.h5', 'categorical_model_v3_full_improved.h5')
     # prepare_sequential_data()
     # train_multi_class_model('xception', 'categorical_model_v3_full_improved.h5', 'categorical_model_v3_full.h5')
-    train_multi_class_model('xception', 'categorical_model_six_full_improved.h5', 'categorical_model_six_full.h5', n_classes=6)
-    predict_multiclass_all('categorical_model_six_full_improved.h5')
+    # train_multi_class_model('xception', 'categorical_model_six_full_improved.h5', 'categorical_model_six_full.h5', n_classes=6)
+    # predict_multiclass_all('categorical_model_six_full_improved.h5')
     # test_recurrent_network()
     # train_recurrent_multi_class_model('xception', 'recurrent_model.h5')
     # extract_csv_partition()
     # extract_metadata(data_prefix=TEST_DIR_STAGE_2)
+    train_simple_recurrent_model('categorical_model_six_full.h5', 'recurrent_model.h5')
 
 
 main()
-
