@@ -636,13 +636,13 @@ def prepare_sequential_data(only_positives=False, for_prediction=False):
         csv["labels"] = csv[label_columns].values.tolist()
         # get sequences of labels
         labels = csv.groupby("StudyInstanceUID")["labels"].apply(list)
-        indices = np.random.rand(sequences.size)
-        # partition data
-        mask = indices < 0.001
-        x_train = list(sequences.iloc[mask])
-        y_train = list(labels.iloc[mask])
-#         x_train = list(sequences)
-#         y_train = list(labels)
+#         indices = np.random.rand(sequences.size)
+#         # partition data
+#         mask = indices < 0.001
+#         x_train = list(sequences.iloc[mask])
+#         y_train = list(labels.iloc[mask])
+        x_train = list(sequences)
+        y_train = list(labels)
         return x_train, y_train
     else:
         csv = pd.read_csv(os.path.join('data/train', "test_meta_2.csv"))
@@ -761,41 +761,49 @@ def train_recurrent_multi_class_model(base_model, model_name, already_trained_mo
             sys.exit(1)
 
 
-def construct_probabilities_sequences(x_train, loaded_multi_class_model):
+def construct_probabilities_sequences(x_train, y_train, loaded_multi_class_model):
     def preprocess_func(im):
         return Preprocessor.preprocess(os.path.join(TRAIN_DIR_STAGE_2, im + ".dcm"))
     new_x_train = list()
+    new_y_train = list()
     print(len(x_train))
     count = 1
-    for seq in x_train:
+    ideal_length = max([len(seq) for seq in x_train])
+    for seq, label_seq in zip(x_train, y_train):
         print(count)
+        label_seq = np.array(label_seq)
+        padding = np.zeros((ideal_length, 6))
+        label_padding = np.zeros((ideal_length, 6))
         preprocessed_seq = np.array(list(map(preprocess_func, seq)))
         preprocessed_seq = np.array([np.repeat(p[..., np.newaxis], 3, -1) for p in preprocessed_seq])
         predictions = loaded_multi_class_model.predict(preprocessed_seq)
-        predictions = predictions.reshape(1, *predictions.shape)
-        new_x_train.append(predictions)
+        padding[:predictions.shape[0], :predictions.shape[1]] = predictions 
+        padding = padding.reshape(1, *padding.shape)
+        label_padding[:label_seq.shape[0], :label_seq.shape[1]] = label_seq
+        label_padding = label_padding.reshape(1, *label_padding.shape)
+        new_x_train.append(padding)
+        new_y_train.append(label_padding)
         count += 1
-    new_x_train = np.concatenate(new_x_train, axis=None)
-    return new_x_train
+    new_x_train = np.concatenate(new_x_train, axis=0)
+    new_y_train = np.concatenate(new_y_train, axis=0)
+    return new_x_train, new_y_train
 
 
 def train_simple_recurrent_model(multi_class_model, model_name, already_trained_model=None):
     x_train, y_train = prepare_sequential_data()
     loaded_multi_class_model = keras.models.load_model(multi_class_model)
-    x_train = construct_probabilities_sequences(x_train, loaded_multi_class_model)
-    y_train = np.concatenate(y_train, axis=None)
-    # y_train = y_train.reshape(1, *y_train.shape)
+    x_train, y_train = construct_probabilities_sequences(x_train, y_train, loaded_multi_class_model)
     print(x_train.shape, y_train.shape)
     if not already_trained_model:
         model = StandardModel(classes=6)
         model = model.build_simple_recurrent_model()
-        model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
+        model.compile(SGD(nesterov=True), loss='binary_crossentropy', metrics=['acc'])
         model.fit(x_train, y_train, epochs=1, batch_size=1)
         model.save(model_name)
     else:
         if os.path.exists(already_trained_model):
             model = keras.models.load_model(already_trained_model)
-            model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
+            model.compile(SGD(nesterov=True), loss='binary_crossentropy', metrics=['acc'])
             model.fit(x_train, y_train, epochs=1, batch_size=1)
             model.save(model_name)
         else:
@@ -850,26 +858,29 @@ def predict(binary_model, multi_class_model, conditional_probabilities=True):
     create_output_csv(output_dict)
 
 
-def recurrent_predict(recurrent_model):
+def recurrent_predict(multi_class_model, recurrent_model):
+    def preprocess_func(im):
+        return Preprocessor.preprocess(os.path.join(TEST_DIR_STAGE_2, im + ".dcm"))
+    loaded_multi_class_model = keras.models.load_model(multi_class_model)
     loaded_recurrent_model = keras.models.load_model(recurrent_model)
     x_test = prepare_sequential_data(for_prediction=True)
 
     output_dict = dict()
     index = 1
-    for sequence in x_test:
+    print(len(x_test))
+    for seq in x_test:
         preprocessed_images = list()
-        for image in sequence:
-            preprocessed_image = Preprocessor.preprocess(os.path.join(TEST_DIR_STAGE_2, image + '.dcm'))
-            preprocessed_image = np.repeat(preprocessed_image[..., np.newaxis], 3, -1)
-            preprocessed_images.append(preprocessed_image)
-        preprocessed_images = np.array(preprocessed_images)
-        classes_predictions = loaded_recurrent_model.predict(preprocessed_images)[0]
-        for i in range(len(sequence)):
+        preprocessed_seq = np.array(list(map(preprocess_func, seq)))
+        preprocessed_seq = np.array([np.repeat(p[..., np.newaxis], 3, -1) for p in preprocessed_seq])
+        predictions = loaded_multi_class_model.predict(preprocessed_seq)
+        predictions = predictions.reshape(1, *predictions.shape)
+        classes_predictions = loaded_recurrent_model.predict(predictions)[0]
+        for i in range(len(seq)):
             current_classes_predictions = classes_predictions[i]
-            output_dict[sequence[i]] = tuple(current_classes_predictions)
+            output_dict[seq[i]] = tuple(current_classes_predictions)
             index += 1
-        if index % 1000 == 0:
-            print(index)
+            if index % 1000 == 0:
+                print(index)
     create_output_csv(output_dict)
 
 
@@ -885,7 +896,8 @@ def main():
     # train_recurrent_multi_class_model('xception', 'recurrent_model.h5')
     # extract_csv_partition()
     # extract_metadata(data_prefix=TEST_DIR_STAGE_2)
-    train_simple_recurrent_model('categorical_model_six_full.h5', 'recurrent_model.h5')
+    train_simple_recurrent_model('categorical_model_six_full.h5', 'recurrent_model_SGD.h5')
+    recurrent_predict('categorical_model_six_full.h5', 'recurrent_model_SGD.h5')
 
 
 main()
