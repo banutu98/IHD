@@ -729,13 +729,13 @@ def train_multi_class_model(base_model, model_name, already_trained_model=None, 
         model = StandardModel(base_model, (512, 512, 3), classes=n_classes, use_softmax=True)
         model = model.build_model()
         model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
-        model.fit_generator(DataGenerator(x_train, labels=y_train, n_classes=n_classes, batch_size=8), epochs=1)
+        model.fit_generator(DataGenerator(x_train, labels=y_train, n_classes=n_classes, batch_size=8), epochs=3)
         model.save(model_name)
     else:
         if os.path.exists(already_trained_model):
             model = keras.models.load_model(already_trained_model)
             model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
-            model.fit_generator(DataGenerator(x_train, labels=y_train, n_classes=n_classes, batch_size=8), epochs=1)
+            model.fit_generator(DataGenerator(x_train, labels=y_train, n_classes=n_classes, batch_size=8), epochs=3)
             model.save(model_name)
         else:
             print_error("Provided model file doesn't exist! Exiting...")
@@ -797,14 +797,14 @@ def train_simple_recurrent_model(multi_class_model, model_name, already_trained_
     if not already_trained_model:
         model = StandardModel(classes=6)
         model = model.build_simple_recurrent_model()
-        model.compile(SGD(nesterov=True), loss='binary_crossentropy', metrics=['acc'])
-        model.fit(x_train, y_train, epochs=1, batch_size=1)
+        model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
+        model.fit(x_train, y_train, epochs=5, batch_size=1)
         model.save(model_name)
     else:
         if os.path.exists(already_trained_model):
             model = keras.models.load_model(already_trained_model)
-            model.compile(SGD(nesterov=True), loss='binary_crossentropy', metrics=['acc'])
-            model.fit(x_train, y_train, epochs=1, batch_size=1)
+            model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
+            model.fit(x_train, y_train, epochs=5, batch_size=1)
             model.save(model_name)
         else:
             print_error("Provided model file doesn't exist! Exiting...")
@@ -890,14 +890,15 @@ def main():
     # predict('binary_model_improved.h5', 'categorical_model_v3_full_improved.h5')
     # prepare_sequential_data()
     # train_multi_class_model('xception', 'categorical_model_v3_full_improved.h5', 'categorical_model_v3_full.h5')
-    # train_multi_class_model('xception', 'categorical_model_six_full_improved.h5', 'categorical_model_six_full.h5', n_classes=6)
-    # predict_multiclass_all('categorical_model_six_full_improved.h5')
+    # train_multi_class_model('xception', 'categorical_model_six_full_improved_v5.h5', 'categorical_model_six_full_improved.h5', n_classes=6)
+    # predict_multiclass_all('categorical_model_six_full_improved_v5.h5')
     # test_recurrent_network()
     # train_recurrent_multi_class_model('xception', 'recurrent_model.h5')
     # extract_csv_partition()
     # extract_metadata(data_prefix=TEST_DIR_STAGE_2)
-    train_simple_recurrent_model('categorical_model_six_full.h5', 'recurrent_model_SGD.h5')
-    recurrent_predict('categorical_model_six_full.h5', 'recurrent_model_SGD.h5')
+    # train_simple_recurrent_model('categorical_model_six_full_improved_v5.h5', 'recurrent_model_improved_v5.h5')
+    # recurrent_predict('categorical_model_six_full_improved_v5.h5', 'recurrent_model_improved_v5.h5')
+    recurrent_predict('categorical_model_six_full_improved.h5', 'recurrent_model_improved_v5.h5')
 
 
 main()
