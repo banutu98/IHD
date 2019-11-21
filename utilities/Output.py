@@ -2,11 +2,6 @@ from utilities.defines import HemorrhageTypes, CSV_FILENAME
 import time
 
 
-# output_dict is dictionary where the image ids are the keys and the values are tuples of probabilities
-# the order of the probabilities in the tuples should be the following:
-# epidural , intraparenchymal, intraventricular, subarachnoid, subdural and any.
-
-
 def create_output_csv(output_dict):
     content = "ID,Label\n"
     for image_id in output_dict:
@@ -17,7 +12,7 @@ def create_output_csv(output_dict):
 
 
 def create_output_line(image_id, hemorrhage_type, probability):
-    return "ID_" + image_id + "_" + hemorrhage_type + "," + str(probability) + "\n"
+    return image_id + "_" + hemorrhage_type + "," + str(probability) + "\n"
 
 
 # code for testing -> time for creating csv approx 10 seconds

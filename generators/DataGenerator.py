@@ -1,18 +1,14 @@
-import os
 import random
 
-import numpy as np
 from keras.utils import Sequence
-
+from utilities.augmentations import *
 from Preprocessor import Preprocessor
-from utilities.augmentations import blur_image, noisy, adjust_brightness
-from utilities.defines import TRAIN_DIR
 
 
 class DataGenerator(Sequence):
 
     def __init__(self, list_ids, labels=None, batch_size=1, img_size=(512, 512, 3),
-                 img_dir=TRAIN_DIR, shuffle=True, n_classes=2):
+                 img_dir=TRAIN_DIR_STAGE_2, shuffle=True, n_classes=2):
         self.list_ids = list_ids
         self.indices = np.arange(len(self.list_ids))
         self.labels = labels
@@ -56,7 +52,10 @@ class DataGenerator(Sequence):
     def __data_generation(self, indices):
         x = np.empty((self.batch_size, *self.img_size))
         if self.labels is not None:  # training phase
-            y = np.empty((self.batch_size, self.n_classes), dtype=np.float32)
+            if self.n_classes == 2:
+                y = np.empty((self.batch_size,), dtype=np.float32)
+            else:
+                y = np.empty((self.batch_size, self.n_classes), dtype=np.float32)
             for i, idx in enumerate(indices):
                 image = Preprocessor.preprocess(self.img_dir + self.list_ids[idx] + ".dcm")
                 if self.labels.iloc[idx]['any'] == 1:
@@ -66,8 +65,10 @@ class DataGenerator(Sequence):
                 x[i, ] = image
                 if self.n_classes == 2:
                     y[i, ] = self.labels.iloc[idx]['any']
-                else:
+                elif self.n_classes == 5:
                     y[i, ] = self.labels.iloc[idx, 1:]
+                else:
+                    y[i, ] = self.labels.iloc[idx]
             return x, y
         else:  # test phase
             for i, idx in enumerate(indices):

@@ -3,7 +3,7 @@ import pandas as pd
 import glob
 import pydicom
 import numpy as np
-from utilities.defines import TRAIN_DIR
+from utilities.defines import TRAIN_DIR_STAGE_2
 
 
 def get_sequence_clipping_order(seq_length):
@@ -24,20 +24,20 @@ def print_error(message):
     print(c_red + message + c_end)
 
 
-def get_csv_train(data_prefix=TRAIN_DIR):
-    train_df = pd.read_csv(os.path.join(data_prefix, 'stage_1_train.csv'))
+def get_csv_train(data_prefix=TRAIN_DIR_STAGE_2):
+    train_df = pd.read_csv(os.path.join(data_prefix, 'stage_2_train.csv'))
     train_df[['ID', 'subtype']] = train_df['ID'].str.rsplit('_', 1,
                                                             expand=True)
     train_df = train_df.rename(columns={'ID': 'id', 'Label': 'label'})
     train_df = pd.pivot_table(train_df, index='id',
                               columns='subtype', values='label')
-    train_df.to_csv("labels.csv")
+    train_df.to_csv("labels_2.csv")
     return train_df
 
 
 def extract_csv_partition():
     df = get_csv_train()
-    meta_data_train = combine_labels_metadata(TRAIN_DIR)
+    meta_data_train = combine_labels_metadata(TRAIN_DIR_STAGE_2)
     negative, positive = df.loc[df['any'] == 0], df.loc[df['any'] == 1]
     negative_study_uids = list(meta_data_train.query("any == 0")['StudyInstanceUID'])
     indices = np.arange(min(len(negative_study_uids), len(positive.index)))
@@ -51,7 +51,7 @@ def extract_csv_partition():
     return pd.concat([positive, negative])
 
 
-def extract_metadata(data_prefix=TRAIN_DIR):
+def extract_metadata(data_prefix=TRAIN_DIR_STAGE_2):
     filenames = glob.glob(os.path.join(data_prefix, "*.dcm"))
     get_id = lambda p: os.path.splitext(os.path.basename(p))[0]
     ids = map(get_id, filenames)
@@ -79,15 +79,16 @@ def extract_metadata(data_prefix=TRAIN_DIR):
     meta_df[split_cols[3:9]] = pd.DataFrame(meta_df.ImageOrientationPatient.values.tolist())
     meta_df[split_cols[9:]] = pd.DataFrame(meta_df.PixelSpacing.values.tolist())
     meta_df = meta_df.drop(['ImagePositionPatient', 'ImageOrientationPatient', 'PixelSpacing'], axis=1)
+    meta_df.to_csv(os.path.join(data_prefix, 'test_meta_2.csv'))
     return meta_df
 
 
-def combine_labels_metadata(data_prefix=TRAIN_DIR):
+def combine_labels_metadata(data_prefix=TRAIN_DIR_STAGE_2):
     meta_df = extract_metadata(data_prefix)
     df = get_csv_train(data_prefix)
     df = df.merge(meta_df, how='left', on='id').dropna()
     df.sort_values(by='ImagePositionPatient3', inplace=True, ascending=False)
-    df.to_csv(os.path.join(data_prefix, 'train_meta.csv'))
+    df.to_csv(os.path.join(data_prefix, 'train_meta_2.csv'))
     return df
 
 

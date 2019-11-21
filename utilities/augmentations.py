@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
-
-from utilities.defines import KERNEL_WIDTH, KERNEL_HEIGHT, GAUSS_MEAN, GAUSS_STDDEV, BRIGHTNESS_DELTA
+from utilities.defines import *
 
 
 # the kernel sizes must be positive odd integers but they do not have to be equal
@@ -28,6 +27,5 @@ def adjust_brightness(image, delta=BRIGHTNESS_DELTA):
     return image
 
 
-# code to test
 if __name__ == '__main__':
     pass

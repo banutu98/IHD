@@ -1,15 +1,14 @@
 import os
 from keras.utils import Sequence
-import numpy as np
+from utilities.augmentations import *
 from Preprocessor import Preprocessor
 from utilities.utils import get_sequence_clipping_order
-from utilities.augmentations import blur_image, noisy, adjust_brightness
 
 
 class LSTMDataGenerator(Sequence):
 
     def __init__(self, list_ids, labels=None, batch_size=1, img_size=(512, 512, 3),
-                 sequence_size=40, img_dir='data/train', shuffle=True):
+                 sequence_size=10, img_dir=TRAIN_DIR_STAGE_2, shuffle=True):
         # here, list_ids is a series of lists; each list represents an
         # ordered sequence of scans that compose a single study
         self.list_ids = list_ids
@@ -77,7 +76,8 @@ class LSTMDataGenerator(Sequence):
                 if diff < 0:
                     padding = np.repeat(np.zeros(imgs.shape[1:])[np.newaxis, ...], abs(diff), 0)
                     imgs = np.concatenate((imgs, padding), axis=0)
-                    seq_labels = np.concatenate(seq_labels, np.zeros(6), axis=0)
+                    seq_padding = np.repeat(np.zeros(6)[np.newaxis, ...], abs(diff), 0)
+                    seq_labels = np.concatenate((seq_labels, seq_padding), axis=0)
                 elif diff > 0:
                     indices = get_sequence_clipping_order(seq_len)
                     imgs = np.delete(imgs, indices[:diff], 0)

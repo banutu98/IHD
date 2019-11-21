@@ -588,18 +588,6 @@ from sklearn.metrics import log_loss
 from keras.callbacks import ModelCheckpoint, Callback
 
 
-class WeightsSaver(Callback):
-    def __init__(self, N):
-        self.N = N
-        self.batch = 0
-
-    def on_batch_end(self, batch, logs={}):
-        if self.batch % self.N == 0:
-            name = 'model_weights.h5'
-            self.model.save_weights(name)
-        self.batch += 1
-
-
 def prepare_data(only_positives=False):
     csv = pd.read_csv(os.path.join('data/train', 'labels_2.csv'))
     files = glob.glob(os.path.join(TRAIN_DIR_STAGE_2, "*.dcm"))
@@ -654,54 +642,6 @@ def prepare_sequential_data(only_positives=False, for_prediction=False):
         sequences = csv.groupby("StudyInstanceUID")["id"].apply(list)
         x_test = list(sequences)
         return x_test
-
-
-def test_recurrent_network():
-    def generate_single_instance(instance):
-        images, labels = list(), list()
-        for file in instance:
-            file_path = os.path.join(TRAIN_DIR, file)
-            images.append(Preprocessor.preprocess(file_path))
-            labels.append(np.random.uniform(0, 1, 5))
-        images = np.stack(images, axis=0)
-        labels = np.stack(labels, axis=0)
-        return images, labels
-
-    model = StandardModel('xception', (512, 512, 3), classes=5, use_softmax=False, pooling_method=None)
-    model = model.build_model()
-    model.compile(Adamax(), loss='categorical_crossentropy', metrics=['acc'])
-    model.summary()
-    x_train = []
-    y_train = []
-    data = [['ID_00025ef4b.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm',
-             'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027cbb1.dcm']]
-    for i in range(1):
-        instance_images, instance_labels = generate_single_instance(data[i])
-        x_train.append(instance_images)
-        y_train.append(instance_labels)
-    x_train = np.stack(x_train)
-    x_train = np.repeat(x_train[..., np.newaxis], 3, -1)
-    y_train = np.stack(y_train)
-    print(x_train.shape, y_train.shape)
-    model.fit(x_train, y_train, batch_size=1)
-
-
-def plot_model_graph(history, graph_name):
-    plt.plot(history.history['acc'])
-    plt.plot(history.history['loss'])
-    plt.title('Model Accuracy & Loss')
-    plt.ylabel('Accuracy & Loss')
-    plt.xlabel('Epoch')
-    plt.savefig(graph_name)
-
-
-def weighted_log_loss(y_true, y_pred):
-    class_weights = np.array([2., 1., 1., 1., 1., 1.])
-    eps = K.epsilon()
-    y_pred = K.clip(y_pred, eps, 1.0 - eps)
-    out = -(y_true * K.log(y_pred) * class_weights +
-            (1.0 - y_true) * K.log(1.0 - y_pred) * class_weights)
-    return K.mean(out, axis=-1)
 
 
 def train_binary_model(base_model, model_name, already_trained_model=None):

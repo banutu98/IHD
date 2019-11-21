@@ -2,13 +2,12 @@ from keras.applications import NASNetLarge, InceptionResNetV2, Xception, DenseNe
 from keras.layers import Bidirectional, LSTM, TimeDistributed, Masking
 from keras.layers import Dense, Dropout, BatchNormalization, LeakyReLU, Input, GlobalAveragePooling2D
 from keras.models import Sequential, Model
-
 from utilities.utils import print_error
 
 
 class StandardModel:
 
-    def __init__(self, network, input_shape, pooling_method='max', classes=2, use_softmax=True):
+    def __init__(self, network='xception', input_shape=(512, 512, 3), pooling_method='max', classes=2, use_softmax=True):
         self.base_model = self.get_base_model(network, input_shape, pooling_method)
         self.classes = classes
         self.use_softmax = use_softmax
@@ -57,7 +56,7 @@ class StandardModel:
         model.add(BatchNormalization())
         model.add(LeakyReLU(alpha=0.1))
         model.add(Dropout(0.3))
-        model.add(Dense(2, activation='sigmoid'))
+        model.add(Dense(1, activation='sigmoid'))
         return model
 
     def build_multi_class_model(self):
@@ -66,23 +65,27 @@ class StandardModel:
     def build_probability_model(self):
         model = Sequential()
         model.add(self.base_model)
-        model.add(Dense(96))
+        model.add(Dense(96, activation='relu'))
         model.add(BatchNormalization())
-        model.add(LeakyReLU(alpha=0.1))
-        model.add(Dropout(0.3))
-        model.add(Dense(5, activation='softmax'))
+        model.add(Dense(self.classes, activation='sigmoid'))
         return model
 
     def build_recurrent_model(self):
-        inputs = Input(shape=(40, *self.input_shape))
+        inputs = Input(shape=(10, *self.input_shape))
         time_dist = TimeDistributed(self.base_model)(inputs)
         global_pool = TimeDistributed(GlobalAveragePooling2D())(time_dist)
         dense_relu = TimeDistributed(Dense(256, activation='relu'))(global_pool)
 
         masked = Masking(0.0)(dense_relu)
-        out = Bidirectional(LSTM(256, return_sequences=True, activation='softsign',
-                                 dropout=0.2, recurrent_dropout=0.2))(masked)
-        out = TimeDistributed(Dense(5, activation='softmax'))(out)
+        out = Bidirectional(LSTM(64, return_sequences=True, activation='softsign'))(masked)
+        out = TimeDistributed(Dense(5, activation='sigmoid'))(out)
 
         model = Model(inputs=inputs, outputs=out)
+        return model
+
+    def build_simple_recurrent_model(self):
+        inputs = Input(shape=(None, self.classes))
+        lstm = Bidirectional(LSTM(64, activation='softsign', return_sequences=True))(inputs)
+        outputs = TimeDistributed(Dense(self.classes, activation='sigmoid'))(lstm)
+        model = Model(inputs=inputs, outputs=outputs)
         return model

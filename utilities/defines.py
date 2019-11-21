@@ -1,18 +1,20 @@
 from enum import Enum
 import os
 
-TRAIN_DIR = os.path.join(os.getcwd(), 'data', 'train', '')
-TEST_DIR = os.path.join(os.getcwd(), 'data', 'test', '')
-CSV_FILENAME = "Submission.csv"
+TRAIN_DIR = os.path.join('../stage_1_train_images', '')
+TRAIN_DIR_STAGE_2 = os.path.join('../stage_2_train_images', '')
+TEST_DIR = os.path.join('../stage_1_test_images', '')
+TEST_DIR_STAGE_2 = os.path.join('../stage_2_test_images', '')
+CSV_FILENAME = 'submission.csv'
 
 
 class HemorrhageTypes(Enum):
+    ANY = "any"
     EP = "epidural"
     IN_PA = "intraparenchymal"
     IN_VE = "intraventricular"
     SUB_AR = "subarachnoid"
     SUB_DU = "subdural"
-    ANY = "any"
 
 
 # There are at least 5 windows that a radiologist goes through for each scan!
