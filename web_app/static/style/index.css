@@ -1,0 +1,78 @@
+body, html {
+    margin: 0;
+    height: 100%;
+    font-family: 'Comfortaa', cursive;
+}
+
+header {
+    opacity: 0.8;
+}
+
+ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: darkcyan;
+    position: fixed;
+    top: 0;
+    width: 100%;
+}
+
+li {
+    float: left;
+}
+
+li a {
+    display: block;
+    text-align: center;
+    padding: 15px 10px;
+    text-decoration: none;
+    color: black;
+}
+
+li a:hover:not(.active) {
+    color: white;
+}
+
+.active {
+    background-color: darkcyan;
+    font-family: 'Satisfy', cursive;
+    font-size: 25px;
+    padding: 7px 10px;
+    color: white;
+}
+
+.full-img-container {
+    background-image: url("../media/brain.jpeg");
+    height: 100%;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-origin: content-box;
+}
+
+.btn {
+    text-decoration: none;
+    color: black;
+    border: 2px solid darkcyan;
+    background-color: darkcyan;
+    padding: 15px;
+    border-radius: 50px;
+    margin-left: 35%;
+    display: inline-block;
+    position: absolute;
+    top: 50%;
+    font-size: 200%;
+    /*left: 50%;*/
+}
+
+.btn:hover {
+    background-color: black;
+    color: darkcyan;
+    border: darkcyan;
+    cursor: pointer;
+}
+
+.margin {
+    height: 85%;
+}

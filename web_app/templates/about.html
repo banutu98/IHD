@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link href="https://fonts.googleapis.com/css?family=Satisfy" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Comfortaa" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style/about.css') }}">
+    <title>IHD</title>
+</head>
+
+<body>
+
+<header>
+    <ul>
+        <li><a class="active" href="{{ url_for('homepage') }}">IHD</a></li>
+        <li><a href="#about">About</a></li>
+    </ul>
+</header>
+
+<div class="img-container">
+    <img src="{{ url_for('static', filename='media/uaic.png') }}">
+</div>
+
+<div class="clips">
+    <img class="paper-clip left" src="{{ url_for('static', filename='media/paper-clip-inv.png') }}">
+    <img class="paper-clip right" src="{{ url_for('static', filename='media/paper-clip-inv.png') }}">
+</div>
+<div class="text-container">
+
+    <h1> What is this IHD?</h1>
+    <p>
+        IHD stands for Intracranial Hemorrhage Detection. Hemorrhage in the head (intracranial hemorrhage) is a
+        relatively common condition that has many causes ranging from trauma, stroke, aneurysm, vascular malformations,
+        high blood pressure, illicit drugs and blood clotting disorders. The role of the Radiologist is to detect the
+        hemorrhage, characterize the hemorrhage subtype, its size and to determine if the hemorrhage might be
+        jeopardizing critical areas of the brain that might require immediate surgery.
+    </p>
+    <p>
+        The system available in this web application is based on an deep neural network with an unique and complex
+        structure. The neural network receives as an input a single dicom image of a brain or a sequence of dicom
+        images from the same pacient and it predicts if that pacient has hemorrhage or not and if that is the case,
+        which type of hemorrhage does he have. The system is successfully making predictions with an accuracy of 99.4
+        percent.
+    </p>
+
+</div>
+
+<div class="team">
+    <p id="team_title">Team</p>
+    <hr>
+    <div class="team-grid">
+        <img src="{{ url_for('static', filename='media/avatar-our-team.png') }}">
+        <img src="{{ url_for('static', filename='media/avatar-our-team.png') }}">
+        <img src="{{ url_for('static', filename='media/avatar-our-team.png') }}">
+        <img src="{{ url_for('static', filename='media/avatar-our-team.png') }}">
+        <p> Claudiu Ghiga</p>
+        <p> Bogdan Lionte</p>
+        <p> Serban Nistor</p>
+        <p> Georgian Tatu</p>
+    </div>
+</div>
+</body>
+</html>

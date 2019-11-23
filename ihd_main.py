@@ -260,8 +260,8 @@ def main():
     # extract_csv_partition()
     # extract_metadata(data_prefix=TEST_DIR_STAGE_2)
     # train_simple_recurrent_model('categorical_model_six_full_improved_v5.h5', 'recurrent_model_improved_v5.h5')
-    # recurrent_predict('categorical_model_six_full_improved_v5.h5', 'recurrent_model_improved_v5.h5')
-    recurrent_predict('categorical_model_six_full_improved.h5', 'recurrent_model_improved_v5.h5')
+    recurrent_predict('categorical_model_six_full_improved_v5.h5', 'recurrent_model_improved_v5.h5')
+    # recurrent_predict('categorical_model_six_full_improved.h5', 'recurrent_model_improved_v5.h5')
 
 
 if __name__ == '__main__':
