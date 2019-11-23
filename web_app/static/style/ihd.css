@@ -43,8 +43,19 @@ li a:hover:not(.active) {
     color: white;
 }
 
+.full-img-container {
+    background-image: url("../media/brain_moved.jpeg");
+    height: 100%;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-origin: content-box;
+}
+
 .form-container {
-    width: 60%;
+    position: absolute;
+    left: 60%;
+    width: 40%;
+    text-align: center;
     margin: 10% auto auto;
 }
 
@@ -56,5 +67,9 @@ form {
 .container {
     border-radius: 5px;
     background-color: darkcyan;
-    padding: 20px;
+    padding: 10px 10px 20px;
+}
+
+.margin {
+    height: 85%;
 }

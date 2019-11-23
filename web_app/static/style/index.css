@@ -63,7 +63,6 @@ li a:hover:not(.active) {
     position: absolute;
     top: 50%;
     font-size: 200%;
-    /*left: 50%;*/
 }
 
 .btn:hover {

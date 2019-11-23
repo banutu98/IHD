@@ -42,3 +42,15 @@ li a:hover:not(.active) {
     padding: 7px 10px;
     color: white;
 }
+
+.full-img-container {
+    background-image: url("../media/brain_moved.jpeg");
+    height: 100%;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-origin: content-box;
+}
+
+.margin {
+    height: 85%;
+}

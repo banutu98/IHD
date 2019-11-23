@@ -17,14 +17,19 @@
     </ul>
 </header>
 
-<div class="form-container">
-
-    <div class="container">
-        <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data">
-            <input type="file" name="files" multiple>
-            <input type="submit" value="Upload">
-        </form>
+<div class="full-img-container">
+    <div class="form-container">
+        <div class="container">
+            <h3>Upload Files</h3>
+            <p>Here is the part where all the magic happens. Choose one, two or any number of dicom files that you wish
+                and let the AI built in this application amaze you!</p>
+            <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data">
+                <input type="file" name="files" id="file" accept=".dcm" multiple>
+                <input type="submit" value="Upload">
+            </form>
+        </div>
     </div>
+    <div class="margin"></div>
 </div>
 
 </body>
