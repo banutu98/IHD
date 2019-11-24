@@ -54,3 +54,30 @@ li a:hover:not(.active) {
 .margin {
     height: 85%;
 }
+
+.form-container {
+    position: absolute;
+    left: 60%;
+    width: 60%;
+    text-align: center;
+    margin: 10% auto auto;
+}
+
+.container {
+    border-radius: 5px;
+    background-color: darkcyan;
+    padding: 10px 10px 20px;
+}
+
+.column {
+    float: left;
+    width: 25%;
+    padding: 10px;
+}
+
+/* Clear floats after the columns */
+.row:after {
+    content: "";
+    display: table;
+    clear: both;
+}

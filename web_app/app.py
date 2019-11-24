@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+
 from flask import Flask, render_template, request, redirect, flash, url_for
 from ihd_web import *
 
@@ -43,9 +45,17 @@ def upload_file():
                 file.save(save_path)
                 current_files.append(save_path)
         if len(current_files):
-            predict(current_files)
+            any_prob, subtype, subtype_prob = predict(current_files)
+            any_prob, subtype_prob = round(any_prob * 100, 2), round(subtype_prob * 100, 2)
+            for num, hemorrhageType in enumerate(HemorrhageTypes, start=0):
+                if num == subtype:
+                    subtype = hemorrhageType.value
+                    break
+            images = prepare_gallery(current_files)
             clean(current_files)
-            return redirect(url_for('result'))
+            print(any_prob, subtype, subtype_prob)
+            return render_template('result.html', any_prob=any_prob, subtype=subtype,
+                                   subtype_prob=subtype_prob, images=images)
         flash('No dcm files selected!')
         return redirect(request.url)
     return render_template('ihd.html')
@@ -54,11 +64,43 @@ def upload_file():
 def predict(files):
     if len(files) == 1:
         predictions = predict_single_file(files[0])
-        print(predictions)
+        if predictions[0] < 0.1:
+            return 0, 0, 0
+        else:
+            subtype = np.argmax(predictions[1:])
+            return predictions[0], subtype, predictions[subtype]
     else:
         sequence_predictions = predict_file_sequence(files)
-        print(sequence_predictions)
-    return files
+        has_hemorrhage_prob = 0
+        for seq in sequence_predictions:
+            if seq[0] >= 0.1 and seq[0] > has_hemorrhage_prob:
+                has_hemorrhage_prob = seq[0]
+        if has_hemorrhage_prob < 0.1:
+            return 0, 0, 0
+        else:
+            max_prob = 0
+            sequence_nr = 0
+            sequence_idx = 0
+            for i in range(len(sequence_predictions)):
+                seq = sequence_predictions[i][1:]
+                max_index = np.argmax(seq)
+                if seq[max_index] > max_prob:
+                    max_prob = seq[max_index]
+                    sequence_idx = max_index
+                    sequence_nr = i
+            return sequence_predictions[sequence_nr][0], sequence_idx, sequence_predictions[sequence_nr][sequence_idx]
+
+
+def prepare_gallery(current_files):
+    images = list()
+    image_files = [Preprocessor.preprocess(file) for file in current_files]
+    for i in range(len(image_files)):
+        plt.imshow(image_files[i], cmap=plt.cm.get_cmap('bone'))
+        img_name = f'brain_image{i}.png'
+        image_path = os.path.join(app.static_folder, 'images', img_name)
+        plt.savefig(image_path)
+        images.append(img_name)
+    return images
 
 
 def clean(files):

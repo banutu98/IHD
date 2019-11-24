@@ -18,6 +18,41 @@
 </header>
 
 <div class="full-img-container">
+    {% if any_prob is defined and any_prob != 0 %}
+    <div class="form-container">
+        <div class="container">
+            <p class="result-content">
+                The system detected that hemorrhage is present in the below images with a rate of <b>{{any_prob}}
+                percent</b> and the subtype that occurred with the highest probability is <b>{{subtype}}</b> with a
+                rate of <b>{{subtype_prob}} percent</b>.
+            </p>
+            <div class="row">
+                {% for image in images %}
+                <div class="column">
+                    <img src="{{url_for('static', filename='images/' + image)}}" alt="brain_pic" width="100px"
+                         height="100px">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% elif any_prob is defined and any_prob == 0 %}
+    <div class="form-container">
+        <div class="container">
+            <p class="result-content">
+                The system detected that no hemorrhage is present in the below images.
+            </p>
+            <div class="row">
+                {% for image in images %}
+                <div class="column">
+                    <img src="{{url_for('static', filename='images/' + image)}}" alt="brain_pic" width="100px"
+                         height="100px">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
     <div class="margin"></div>
 </div>
 

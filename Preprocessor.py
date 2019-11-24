@@ -95,3 +95,10 @@ class Preprocessor:
         augmented.append(noisy(image))
         augmented.append(adjust_brightness(image, 0.3))
         return augmented
+
+
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+    image = Preprocessor.preprocess(r'D:\Proiecte\IHD\data\ID_0001de0e8.dcm')
+    plt.imshow(image, cmap=plt.cm.get_cmap('bone'))
+    plt.savefig('test.png')
