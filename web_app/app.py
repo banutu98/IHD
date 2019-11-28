@@ -93,13 +93,20 @@ def predict(files):
 
 def prepare_gallery(current_files):
     images = list()
+    line = list()
     image_files = [Preprocessor.preprocess(file) for file in current_files]
     for i in range(len(image_files)):
         plt.imshow(image_files[i], cmap=plt.cm.get_cmap('bone'))
         img_name = f'brain_image{i}.png'
         image_path = os.path.join(app.static_folder, 'images', img_name)
         plt.savefig(image_path)
-        images.append(img_name)
+        if len(line) < 5:
+            line.append(img_name)
+        else:
+            images.append(line)
+            line = [img_name]
+    if 0 < len(line) < 5:
+        images.append(line)
     return images
 
 
