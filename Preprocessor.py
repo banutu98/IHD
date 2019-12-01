@@ -99,7 +99,7 @@ class Preprocessor:
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    image = Preprocessor.preprocess(r'C:\Users\tatu georgian\Desktop\IHD\data\ID_0000aee4b.dcm')
+    image = Preprocessor.preprocess(r'data\ID_0000aee4b.dcm')
     Preprocessor.augment(image)
     plt.imshow(image, cmap=plt.cm.get_cmap('bone'))
     plt.savefig('test.png')
