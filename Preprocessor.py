@@ -7,8 +7,21 @@ from skimage.transform import resize
 from utilities.augmentations import *
 
 
+def preprocessor_mop(function_to_decorate):
+    def a_wrapper_accepting_arbitrary_arguments(*args,**kwargs):
+        # print('The positional arguments are', args)
+        # print('The keyword arguments are', kwargs)
+        assert args[0].shape == (512, 512), "Input image shape is broken"
+        static_function = function_to_decorate.__func__
+        output = static_function(*args)
+        assert output.shape == (512, 512), "Preprocessing broke the image"
+        return output
+    return a_wrapper_accepting_arbitrary_arguments
+
+
 class Preprocessor:
 
+    @preprocessor_mop
     @staticmethod
     def apply_hounsfield(image, intercept, slope):
         if slope is not 1:
@@ -21,6 +34,8 @@ class Preprocessor:
         image[image < -1024] = -1024
         return image
 
+
+    @preprocessor_mop
     @staticmethod
     def windowing(image, custom_center=30, custom_width=100, rescale=True):
         new_image = copy.deepcopy(image)
@@ -34,6 +49,8 @@ class Preprocessor:
             new_image = (new_image - min_value) / (max_value - min_value)
         return new_image
 
+
+    @preprocessor_mop
     @staticmethod
     def image_resample(image, pixel_spacing, new_spacing=[1, 1]):
         pixel_spacing = map(float, pixel_spacing)
@@ -46,6 +63,8 @@ class Preprocessor:
         image = scipy.ndimage.interpolation.zoom(image, real_resize_factor)
         return image
 
+
+    @preprocessor_mop
     @staticmethod
     def image_background_segmentation(image, WL=30, WW=100, rescale=True):
         lB = WW - WL
@@ -99,7 +118,16 @@ class Preprocessor:
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    image = Preprocessor.preprocess(r'data\ID_0000aee4b.dcm')
-    Preprocessor.augment(image)
+
+    dicom = pydicom.read_file(r'data/ID_000624786.dcm')
+    image = dicom.pixel_array.astype(np.float64)
+    image = resize(image, (512, 500))
+
+    p = Preprocessor
+    image = p.apply_hounsfield(image, dicom.RescaleIntercept, dicom.RescaleSlope)
+    image = p.image_background_segmentation(image)
+    image = p.windowing(image)
+
     plt.imshow(image, cmap=plt.cm.get_cmap('bone'))
     plt.savefig('test.png')
+    plt.show()
