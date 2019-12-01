@@ -24,6 +24,7 @@ def blur_monitor(blur_function):
         output = blur_function(*args, **kwargs)
         check_image(output)
         assert np.mean(output) != np.mean(args[0])
+        return output
 
     return wrapper
 
@@ -42,6 +43,7 @@ def noisy_monitor(noisy_function):
         output = noisy_function(*args, **kwargs)
         check_image(output)
         assert np.mean(output) != np.mean(args[0])
+        return output
     return wrapper
 
 
@@ -55,5 +57,6 @@ def brightness_monitor(brightness_function):
             assert 0 <= brightness_delta <= 1
         output = brightness_function(*args, **kwargs)
         check_image(output)
+        return output
     return wrapper
 
