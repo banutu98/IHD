@@ -44,14 +44,16 @@
             <p class="result-content">
                 The system detected that no hemorrhage is present in the below images.
             </p>
+            {% for image_line in images %}
             <div class="row">
-                {% for image in images %}
+                {% for image in image_line %}
                 <!--                <div class="column">-->
                 <img src="{{url_for('static', filename='images/' + image)}}" alt="brain_pic" width="100px"
                      height="100px">
                 <!--                </div>-->
                 {% endfor %}
             </div>
+            {% endfor %}
         </div>
     </div>
     {% endif %}

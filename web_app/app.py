@@ -105,7 +105,7 @@ def prepare_gallery(current_files):
         else:
             images.append(line)
             line = [img_name]
-    if 0 < len(line) < 5:
+    if 0 < len(line) <= 5:
         images.append(line)
     return images
 
