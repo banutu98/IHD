@@ -3,8 +3,8 @@ import datetime
 import matplotlib.pyplot as plt
 
 from flask import Flask, render_template, request, redirect, flash, url_for
-#import sys
-#sys.path.append("..")
+# import sys
+# sys.path.append("..")
 from ihd_web import *
 import aspectlib
 
@@ -16,6 +16,7 @@ app.secret_key = 'super secret key'
 
 # dictionary with name and model keys
 cache = {}
+
 
 @app.route("/")
 def homepage():
@@ -138,6 +139,7 @@ def model_cache(name):
     else:
         yield aspectlib.Return(cache["value"])
 
+
 @aspectlib.Aspect
 def model_log(files):
     results = yield aspectlib.Proceed(files)
@@ -146,6 +148,7 @@ def model_log(files):
     message = "[%s] Request for %s prediction with results: %s\n"
     with open("log.txt", "a") as logfile:
         logfile.write(message % (date, type_prediction, str(results)))
+
 
 if __name__ == '__main__':
     app.run(use_reloader=False, debug=False, threaded=False)
