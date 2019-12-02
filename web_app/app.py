@@ -1,7 +1,12 @@
+import datetime
+
 import matplotlib.pyplot as plt
 
 from flask import Flask, render_template, request, redirect, flash, url_for
+#import sys
+#sys.path.append("..")
 from ihd_web import *
+import aspectlib
 
 UPLOAD_FOLDER = 'uploaded_files'
 
@@ -9,6 +14,8 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.secret_key = 'super secret key'
 
+# dictionary with name and model keys
+cache = {}
 
 @app.route("/")
 def homepage():
@@ -45,7 +52,9 @@ def upload_file():
                 file.save(save_path)
                 current_files.append(save_path)
         if len(current_files):
-            any_prob, subtype, subtype_prob = predict(current_files)
+            # add logger aspect
+            with aspectlib.weave(predict, model_log):
+                any_prob, subtype, subtype_prob = predict(current_files)
             any_prob, subtype_prob = round(any_prob * 100, 2), round(subtype_prob * 100, 2)
             for num, hemorrhageType in enumerate(HemorrhageTypes, start=0):
                 if num == subtype:
@@ -63,14 +72,18 @@ def upload_file():
 
 def predict(files):
     if len(files) == 1:
-        predictions = predict_single_file(files[0])
+        # add model caching aspect
+        with aspectlib.weave(get_model, model_cache):
+            predictions = predict_single_file(files[0])
         if predictions[0] < 0.1:
             return 0, 0, 0
         else:
             subtype = np.argmax(predictions[1:])
             return predictions[0], subtype, predictions[subtype]
     else:
-        sequence_predictions = predict_file_sequence(files)
+        # add model caching aspect
+        with aspectlib.weave(get_model, model_cache):
+            sequence_predictions = predict_file_sequence(files)
         has_hemorrhage_prob = 0
         for seq in sequence_predictions:
             if seq[0] >= 0.1 and seq[0] > has_hemorrhage_prob:
@@ -114,6 +127,25 @@ def clean(files):
     for file in files:
         os.unlink(file)
 
+
+@aspectlib.Aspect
+def model_cache(name):
+    if not cache or cache["name"] != name:
+        models = yield aspectlib.Proceed(name)
+        cache["name"] = name
+        cache["value"] = models
+        yield aspectlib.Return(models)
+    else:
+        yield aspectlib.Return(cache["value"])
+
+@aspectlib.Aspect
+def model_log(files):
+    results = yield aspectlib.Proceed(files)
+    type_prediction = "single" if len(files) == 1 else "sequential"
+    date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    message = "[%s] Request for %s prediction with results: %s\n"
+    with open("log.txt", "a") as logfile:
+        logfile.write(message % (date, type_prediction, str(results)))
 
 if __name__ == '__main__':
     app.run(use_reloader=False, debug=False, threaded=False)
