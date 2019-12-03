@@ -126,7 +126,10 @@ def prepare_gallery(current_files):
 
 def clean(files):
     for file in files:
-        os.unlink(file)
+        try:
+            os.unlink(file)
+        except FileNotFoundError:
+            continue
 
 
 @aspectlib.Aspect
