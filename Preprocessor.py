@@ -11,10 +11,15 @@ def preprocessor_mop(function_to_decorate):
     def a_wrapper_accepting_arbitrary_arguments(*args,**kwargs):
         # print('The positional arguments are', args)
         # print('The keyword arguments are', kwargs)
-        assert args[0].shape == (512, 512), "Input image shape is broken"
+        if args[0].shape != (512, 512):
+            print("Input image shape is broken! Resizing...")
+            args = list(args)
+            args[0] = resize(args[0], (512, 512))
         static_function = function_to_decorate.__func__
         output = static_function(*args)
-        assert output.shape == (512, 512), "Preprocessing broke the image"
+        if output.shape != (512, 512):
+            print("Preprocessing broke the image! Resizing...")
+            output = resize(output, (512, 512))
         return output
     return a_wrapper_accepting_arbitrary_arguments
 

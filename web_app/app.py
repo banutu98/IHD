@@ -1,5 +1,5 @@
 import datetime
-
+import time
 import matplotlib.pyplot as plt
 
 from flask import Flask, render_template, request, redirect, flash, url_for
@@ -142,12 +142,14 @@ def model_cache(name):
 
 @aspectlib.Aspect
 def model_log(files):
+    start_time = time.time()
     results = yield aspectlib.Proceed(files)
+    end_time = time.time() - start_time
     type_prediction = "single" if len(files) == 1 else "sequential"
     date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    message = "[%s] Request for %s prediction with results: %s\n"
+    message = "[%s] Request for %s prediction with results: %s Execution Time: %f\n"
     with open("log.txt", "a") as logfile:
-        logfile.write(message % (date, type_prediction, str(results)))
+        logfile.write(message % (date, type_prediction, str(results), end_time))
 
 
 if __name__ == '__main__':

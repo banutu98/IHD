@@ -1,6 +1,7 @@
 import keras
 from generators.DataGenerator import *
 
+
 def get_model(name):
     if name == "single":
         model_path = os.path.join('..', 'models', 'categorical_model_six_full_improved_v5.h5')
@@ -27,6 +28,7 @@ def predict_single_file(file):
 def predict_file_sequence(files):
     def preprocess_func(file_path):
         return Preprocessor.preprocess(file_path)
+
     loaded_multi_class_model, loaded_recurrent_model = get_model("sequential")
     preprocessed_files = np.array(list(map(preprocess_func, files)))
     preprocessed_files = np.array([np.repeat(p[..., np.newaxis], 3, -1) for p in preprocessed_files])
