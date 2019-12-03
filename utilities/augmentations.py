@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from utilities.defines import *
-from mop.mop import *
+from taip_stuff.mop import *
 
 # the kernel sizes must be positive odd integers but they do not have to be equal
 # the larger they are the more the image will be blurred
