@@ -1,14 +1,15 @@
+import os
+import time
+
+import numpy as np
 from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import WebDriverException
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
-import time
-import os
-import numpy as np
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 FILES = [r'data\ID_0000ca2f6.dcm', r'data\ID_0000ca2f6.dcm', r'data\ID_0000f1657.dcm', r'data\ID_0001dcc25.dcm',
          r'data\ID_0001de0e8.dcm', r'data\ID_0002d438a.dcm', r'data\ID_0004cd66f.dcm', r'data\ID_0005b2d86.dcm',
