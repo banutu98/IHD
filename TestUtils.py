@@ -1,18 +1,17 @@
-import os
 import unittest
-import numpy as np
+
 import pandas as pd
+
 import utilities.utils as utils
 
 
 class TestUtils(unittest.TestCase):
-    
 
     def test_label_columns(self):
         data = utils.get_csv_train("data/train")
         columns = list(data.columns)
-        self.assertTrue(columns == ['any', 'epidural', 'intraparenchymal', 'intraventricular', 'subarachnoid', 'subdural'])
-
+        self.assertTrue(
+            columns == ['any', 'epidural', 'intraparenchymal', 'intraventricular', 'subarachnoid', 'subdural'])
 
     def test_metadata_columns(self):
         data = pd.read_csv("data/train/metadata_train.csv")
@@ -31,7 +30,6 @@ class TestUtils(unittest.TestCase):
                             'PixelSpacing1', 'PixelSpacing2']
         metadata_columns = set(metadata_columns)
         self.assertTrue(columns == metadata_columns)
-
 
     def test_combine_meta_labels(self):
         expected = pd.read_csv("data/train/train_meta.csv")

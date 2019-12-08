@@ -61,7 +61,7 @@ def crawl_site(driver):
     go_home(driver)
     predict_from_home(driver, change_dir=False)
     go_home(driver)
-    predict_from_home(driver)
+    predict_from_home(driver, change_dir=False)
     go_home(driver)
 
 
