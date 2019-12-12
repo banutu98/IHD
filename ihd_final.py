@@ -274,8 +274,8 @@ class Preprocessor:
     def preprocess(image_path):
         dicom = pydicom.read_file(image_path)
         image = dicom.pixel_array.astype(np.float64)
-        if image.shape != (512, 512):
-            image = resize(image, (512, 512))
+        if image.shape != (299, 299):
+            image = resize(image, (299, 299))
         p = Preprocessor
         image = p.apply_hounsfield(image, dicom.RescaleIntercept, dicom.RescaleSlope)
         image = p.windowing(image)
@@ -301,7 +301,7 @@ from keras.utils import Sequence
 
 class DataGenerator(Sequence):
 
-    def __init__(self, list_ids, labels=None, batch_size=1, img_size=(512, 512, 3),
+    def __init__(self, list_ids, labels=None, batch_size=1, img_size=(299, 299, 3),
                  img_dir=TRAIN_DIR_STAGE_2, shuffle=True, n_classes=2):
         self.list_ids = list_ids
         self.indices = np.arange(len(self.list_ids))
@@ -381,7 +381,7 @@ from keras.utils import Sequence
 
 class LSTMDataGenerator(Sequence):
 
-    def __init__(self, list_ids, labels=None, batch_size=1, img_size=(512, 512, 3),
+    def __init__(self, list_ids, labels=None, batch_size=1, img_size=(299, 299, 3),
                  sequence_size=10, img_dir=TRAIN_DIR_STAGE_2, shuffle=True):
         # here, list_ids is a series of lists; each list represents an
         # ordered sequence of scans that compose a single study
@@ -487,7 +487,7 @@ from keras.models import Sequential, Model
 
 class StandardModel:
 
-    def __init__(self, network='xception', input_shape=(512, 512, 3), pooling_method='max', classes=2, use_softmax=True):
+    def __init__(self, network='xception', input_shape=(299, 299, 3), pooling_method='max', classes=2, use_softmax=True):
         self.base_model = self.get_base_model(network, input_shape, pooling_method)
         self.classes = classes
         self.use_softmax = use_softmax
@@ -588,6 +588,18 @@ from sklearn.metrics import log_loss
 from keras.callbacks import ModelCheckpoint, Callback
 
 
+class WeightsSaver(Callback):
+    def __init__(self, N):
+        self.N = N
+        self.batch = 0
+
+    def on_batch_end(self, batch, logs={}):
+        if self.batch % self.N == 0:
+            name = 'model_weights.h5'
+            self.model.save_weights(name)
+        self.batch += 1
+        
+
 def prepare_data(only_positives=False):
     csv = pd.read_csv(os.path.join('data/train', 'labels_2.csv'))
     files = glob.glob(os.path.join(TRAIN_DIR_STAGE_2, "*.dcm"))
@@ -644,6 +656,54 @@ def prepare_sequential_data(only_positives=False, for_prediction=False):
         return x_test
 
 
+def test_recurrent_network():
+    def generate_single_instance(instance):
+        images, labels = list(), list()
+        for file in instance:
+            file_path = os.path.join(TRAIN_DIR, file)
+            images.append(Preprocessor.preprocess(file_path))
+            labels.append(np.random.uniform(0, 1, 5))
+        images = np.stack(images, axis=0)
+        labels = np.stack(labels, axis=0)
+        return images, labels
+
+    model = StandardModel('xception', (512, 512, 3), classes=5, use_softmax=False, pooling_method=None)
+    model = model.build_model()
+    model.compile(Adamax(), loss='categorical_crossentropy', metrics=['acc'])
+    model.summary()
+    x_train = []
+    y_train = []
+    data = [['ID_00025ef4b.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm',
+             'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027c277.dcm', 'ID_00027cbb1.dcm', 'ID_00027cbb1.dcm']]
+    for i in range(1):
+        instance_images, instance_labels = generate_single_instance(data[i])
+        x_train.append(instance_images)
+        y_train.append(instance_labels)
+    x_train = np.stack(x_train)
+    x_train = np.repeat(x_train[..., np.newaxis], 3, -1)
+    y_train = np.stack(y_train)
+    print(x_train.shape, y_train.shape)
+    model.fit(x_train, y_train, batch_size=1)
+
+
+def plot_model_graph(history, graph_name):
+    plt.plot(history.history['acc'])
+    plt.plot(history.history['loss'])
+    plt.title('Model Accuracy & Loss')
+    plt.ylabel('Accuracy & Loss')
+    plt.xlabel('Epoch')
+    plt.savefig(graph_name)
+
+
+def weighted_log_loss(y_true, y_pred):
+    class_weights = np.array([2., 1., 1., 1., 1., 1.])
+    eps = K.epsilon()
+    y_pred = K.clip(y_pred, eps, 1.0 - eps)
+    out = -(y_true * K.log(y_pred) * class_weights +
+            (1.0 - y_true) * K.log(1.0 - y_pred) * class_weights)
+    return K.mean(out, axis=-1)
+
+
 def train_binary_model(base_model, model_name, already_trained_model=None):
     x_train, y_train, x_test, y_test = prepare_data()
     if not already_trained_model:
@@ -665,17 +725,19 @@ def train_binary_model(base_model, model_name, already_trained_model=None):
 
 def train_multi_class_model(base_model, model_name, already_trained_model=None, n_classes=5):
     x_train, y_train, x_test, y_test = prepare_data()
+    checkpoint_acc = keras.callbacks.ModelCheckpoint(model_name, monitor='loss', verbose=0,
+                                                     save_best_only=False, save_weights_only=False, mode='auto', period=1)
     if not already_trained_model:
-        model = StandardModel(base_model, (512, 512, 3), classes=n_classes, use_softmax=True)
+        model = StandardModel(base_model, (299, 299, 3), classes=n_classes, use_softmax=True)
         model = model.build_model()
         model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
-        model.fit_generator(DataGenerator(x_train, labels=y_train, n_classes=n_classes, batch_size=8), epochs=3)
+        model.fit_generator(DataGenerator(x_train, labels=y_train, n_classes=n_classes, batch_size=8), epochs=5, callbacks=[checkpoint_acc])
         model.save(model_name)
     else:
         if os.path.exists(already_trained_model):
             model = keras.models.load_model(already_trained_model)
             model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
-            model.fit_generator(DataGenerator(x_train, labels=y_train, n_classes=n_classes, batch_size=8), epochs=3)
+            model.fit_generator(DataGenerator(x_train, labels=y_train, n_classes=n_classes, batch_size=8), epochs=3, callbacks=[checkpoint_acc])
             model.save(model_name)
         else:
             print_error("Provided model file doesn't exist! Exiting...")
@@ -830,15 +892,15 @@ def main():
     # predict('binary_model_improved.h5', 'categorical_model_v3_full_improved.h5')
     # prepare_sequential_data()
     # train_multi_class_model('xception', 'categorical_model_v3_full_improved.h5', 'categorical_model_v3_full.h5')
-    # train_multi_class_model('xception', 'categorical_model_six_full_improved_v5.h5', 'categorical_model_six_full_improved.h5', n_classes=6)
+    # train_multi_class_model('xception', 'categorical_model_resized.h5', n_classes=6)
     # predict_multiclass_all('categorical_model_six_full_improved_v5.h5')
     # test_recurrent_network()
     # train_recurrent_multi_class_model('xception', 'recurrent_model.h5')
     # extract_csv_partition()
     # extract_metadata(data_prefix=TEST_DIR_STAGE_2)
-    # train_simple_recurrent_model('categorical_model_six_full_improved_v5.h5', 'recurrent_model_improved_v5.h5')
+    train_simple_recurrent_model('categorical_model_resized.h5', 'recurrent_model_resized.h5')
     # recurrent_predict('categorical_model_six_full_improved_v5.h5', 'recurrent_model_improved_v5.h5')
-    recurrent_predict('categorical_model_six_full_improved.h5', 'recurrent_model_improved_v5.h5')
+    # recurrent_predict('categorical_model_six_full_improved.h5', 'recurrent_model_improved_v5.h5')
 
 
 main()
