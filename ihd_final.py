@@ -771,18 +771,18 @@ def construct_probabilities_sequences(x_train, y_train, loaded_multi_class_model
     print(len(x_train))
     count = 1
     ideal_length = max([len(seq) for seq in x_train])
-    for seq, label_seq in zip(x_train, y_train):
+    SEQ_BATCH_SIZE = 5
+    for i in range(len(x_train) / SEQ_BATCH_SIZE):
         print(count)
-        label_seq = np.array(label_seq)
-        padding = np.zeros((ideal_length, 6))
-        label_padding = np.zeros((ideal_length, 6))
-        preprocessed_seq = np.array(list(map(preprocess_func, seq)))
-        preprocessed_seq = np.array([np.repeat(p[..., np.newaxis], 3, -1) for p in preprocessed_seq])
-        predictions = loaded_multi_class_model.predict(preprocessed_seq)
-        padding[:predictions.shape[0], :predictions.shape[1]] = predictions 
-        padding = padding.reshape(1, *padding.shape)
-        label_padding[:label_seq.shape[0], :label_seq.shape[1]] = label_seq
-        label_padding = label_padding.reshape(1, *label_padding.shape)
+        seqs = x_train[i*SEQ_BATCH_SIZE:(i+1)*SEQ_BATCH_SIZE]
+        label_seqs = np.array(y_train[i*SEQ_BATCH_SIZE:(i+1)*SEQ_BATCH_SIZE])
+        padding = np.zeros((SEQ_BATCH_SIZE, ideal_length, 6))
+        label_padding = np.zeros((SEQ_BATCH_SIZE, ideal_length, 6))
+        preprocessed_seqs = np.array([list(map(preprocess_func, seq)) for seq in seqs])
+        preprocessed_seqs = np.array([np.repeat(p[..., np.newaxis], 3, -1) for p in seq for seq in preprocessed_seqs])
+        predictions = loaded_multi_class_model.predict(preprocessed_seqs)
+        padding[:, :predictions.shape[0], :predictions.shape[1]] = predictions
+        label_padding[:, :label_seq.shape[0], :label_seq.shape[1]] = label_seqs
         new_x_train.append(padding)
         new_y_train.append(label_padding)
         count += 1
