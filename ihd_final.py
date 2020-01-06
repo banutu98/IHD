@@ -427,7 +427,7 @@ class LSTMDataGenerator(Sequence):
         x = np.empty((self.batch_size, self.sequence_size, *self.img_size))
         preprocess_func = lambda im: Preprocessor.preprocess(os.path.join(self.img_dir, im + ".dcm"))
         if self.labels is not None:  # training phase
-            y = np.empty((self.batch_size, self.sequence_size, 5), dtype=np.float32)
+            y = np.empty((self.batch_size, self.sequence_size, 6), dtype=np.float32)
             for i, idx in enumerate(indices):
                 seq = self.list_ids[idx]
                 seq_labels = np.array(self.labels[idx])
@@ -457,7 +457,7 @@ class LSTMDataGenerator(Sequence):
                     imgs = np.delete(imgs, indices[:diff], 0)
                     seq_labels = np.delete(seq_labels, indices[:diff], 0)
                 x[i,] = imgs
-                y[i,] = seq_labels[:, 1:]
+                y[i,] = seq_labels[:, :]
             return x, y
         else:  # test phase
             for i, idx in enumerate(indices):
@@ -558,7 +558,7 @@ class StandardModel:
 
         masked = Masking(0.0)(dense_relu)
         out = Bidirectional(LSTM(64, return_sequences=True, activation='softsign'))(masked)
-        out = TimeDistributed(Dense(5, activation='sigmoid'))(out)
+        out = TimeDistributed(Dense(self.classes, activation='sigmoid'))(out)
 
         model = Model(inputs=inputs, outputs=out)
         return model
@@ -747,10 +747,10 @@ def train_multi_class_model(base_model, model_name, already_trained_model=None, 
 def train_recurrent_multi_class_model(base_model, model_name, already_trained_model=None):
     x_train, y_train = prepare_sequential_data()
     if not already_trained_model:
-        model = StandardModel(base_model, (512, 512, 3), classes=5, use_softmax=False, pooling_method=None)
+        model = StandardModel(base_model, (299, 299, 3), classes=6, use_softmax=False, pooling_method=None)
         model = model.build_model()
         model.compile(Adamax(), loss='binary_crossentropy', metrics=['acc'])
-        model.fit_generator(LSTMDataGenerator(x_train, labels=y_train), epochs=3)
+        model.fit_generator(LSTMDataGenerator(x_train, labels=y_train), epochs=5)
         model.save(model_name)
     else:
         if os.path.exists(already_trained_model):
@@ -869,7 +869,6 @@ def recurrent_predict(multi_class_model, recurrent_model):
 
     output_dict = dict()
     index = 1
-    print(len(x_test))
     for seq in x_test:
         preprocessed_images = list()
         preprocessed_seq = np.array(list(map(preprocess_func, seq)))
@@ -886,21 +885,56 @@ def recurrent_predict(multi_class_model, recurrent_model):
     create_output_csv(output_dict)
 
 
+def conv_recurrent_predict(recurrent_model):
+    def preprocess_func(im):
+        return Preprocessor.preprocess(os.path.join(TEST_DIR_STAGE_2, im + ".dcm"))
+    loaded_recurrent_model = keras.models.load_model(recurrent_model)
+    x_test = prepare_sequential_data(for_prediction=True)
+
+    output_dict = dict()
+    index = 1
+    for seq in x_test:
+        preprocessed_images = list()
+        preprocessed_seq = np.array(list(map(preprocess_func, seq)))
+        preprocessed_seq = np.array([np.repeat(p[..., np.newaxis], 3, -1) for p in preprocessed_seq])
+        
+        seq_len = len(preprocessed_seq)
+        diff = seq_len - 10
+        if diff < 0:
+            padding = np.repeat(np.zeros(preprocessed_seq.shape[1:])[np.newaxis, ...], abs(diff), 0)
+            preprocessed_seq = np.concatenate((preprocessed_seq, padding), axis=0)
+        elif diff > 0:
+            indices = get_sequence_clipping_order(seq_len)
+            preprocessed_seq = np.delete(preprocessed_seq, indices[:diff], 0)
+        preprocessed_seq = preprocessed_seq.reshape(1, *preprocessed_seq.shape)
+        print(preprocessed_seq.shape)
+        predictions = loaded_recurrent_model.predict(preprocessed_seq)[0]
+        print(predictions.shape)
+        for i in range(len(seq)):
+            current_classes_predictions = predictions[i]
+            output_dict[seq[i]] = tuple(current_classes_predictions)
+            index += 1
+            if index % 1000 == 0:
+                print(index)
+    create_output_csv(output_dict)
+
+    
 def main():
     # TODO: Possible MODELS for training: inception, xception, resnet, densenet, nas
     # train_binary_model('xception', 'binary_model_improved.h5', 'binary_model.h5')
     # predict('binary_model_improved.h5', 'categorical_model_v3_full_improved.h5')
     # prepare_sequential_data()
     # train_multi_class_model('xception', 'categorical_model_v3_full_improved.h5', 'categorical_model_v3_full.h5')
-    # train_multi_class_model('xception', 'categorical_model_resized.h5', n_classes=6)
-    # predict_multiclass_all('categorical_model_six_full_improved_v5.h5')
+    # train_multi_class_model('xception', 'categorical_six_frozen.h5', n_classes=6)
     # test_recurrent_network()
-    # train_recurrent_multi_class_model('xception', 'recurrent_model.h5')
     # extract_csv_partition()
     # extract_metadata(data_prefix=TEST_DIR_STAGE_2)
-    train_simple_recurrent_model('categorical_model_resized.h5', 'recurrent_model_resized.h5')
-    # recurrent_predict('categorical_model_six_full_improved_v5.h5', 'recurrent_model_improved_v5.h5')
-    # recurrent_predict('categorical_model_six_full_improved.h5', 'recurrent_model_improved_v5.h5')
+    # train_simple_recurrent_model('categorical_six_frozen.h5', 'recurrent_model_frozen.h5')
+    # recurrent_predict('categorical_six_frozen.h5', 'recurrent_model_frozen.h5')
+    # predict_multiclass_all('categorical_model_resized_no_pre.h5')
+    # recurrent_predict('categorical_model_resized_no_pre.h5', 'recurrent_model_resized_no_pre.h5')
+    # train_recurrent_multi_class_model('xception', 'conv_recurrent_model.h5')
+    conv_recurrent_predict("conv_recurrent_model.h5")
 
 
 main()
